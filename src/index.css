@@ -91,13 +91,14 @@
 
   /* ---- 画布透明棋盘格 ---- */
   .checkerboard {
-    background-image: linear-gradient(45deg, #2a2f3a 25%, transparent 25%),
-      linear-gradient(-45deg, #2a2f3a 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #2a2f3a 75%),
-      linear-gradient(-45deg, transparent 75%, #2a2f3a 75%);
+    /* 使用接近 Photoshop 的浅灰棋盘格，避免透明区域被误认为黑色填充。 */
+    background-image: linear-gradient(45deg, #b8bec8 25%, transparent 25%),
+      linear-gradient(-45deg, #b8bec8 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #b8bec8 75%),
+      linear-gradient(-45deg, transparent 75%, #b8bec8 75%);
     background-size: 16px 16px;
     background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-    background-color: #22262f;
+    background-color: #e0e3e8;
   }
 
   /* ---- 通用按钮 ---- */
