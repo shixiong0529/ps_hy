@@ -804,6 +804,34 @@ export class EditorEngine {
     if (commit) this.pushHistoryState()
   }
 
+  /** 将工具栏前景色应用到当前对象；对象类型以 Canvas 实态为准，避免 UI 选区快照过期。 */
+  setActiveForegroundColor(color: string) {
+    let changed = false
+    this.canvas
+      .getActiveObjects()
+      .filter((o) => !(o as AnyObject).locked)
+      .forEach((o) => {
+        const obj = o as AnyObject
+        let objectChanged = false
+        if (obj.layerType === 'text' || ['rect', 'ellipse', 'triangle'].includes(obj.layerType ?? '')) {
+          obj.set({ fill: color })
+          objectChanged = true
+        } else if (obj.layerType === 'line' || obj.layerType === 'path') {
+          obj.set({ stroke: color })
+          objectChanged = true
+        }
+        if (objectChanged) {
+          obj.setCoords()
+          changed = true
+        }
+      })
+    if (!changed) return
+    this.canvas.requestRenderAll()
+    this.syncSelection()
+    this.syncLayers()
+    this.pushHistoryState()
+  }
+
   nudgeActive(dx: number, dy: number) {
     const objs = this.canvas.getActiveObjects().filter((o) => !(o as AnyObject).locked)
     if (!objs.length) return

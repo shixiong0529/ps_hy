@@ -77,9 +77,11 @@ export function Toolbar() {
             className="absolute -left-1 -top-1 h-10 w-10"
             value={brush.color}
             onChange={(e) => {
-              setBrush({ color: e.target.value })
-              setTextStyle({ fill: e.target.value })
-              setShapeStyle({ fill: e.target.value })
+              const color = e.target.value
+              setBrush({ color })
+              setTextStyle({ fill: color })
+              setShapeStyle({ fill: color })
+              engine?.setActiveForegroundColor(color)
               engine?.refreshBrush()
             }}
           />
