@@ -1,0 +1,15 @@
+# 依赖与构建产物
+node_modules/
+dist/
+coverage/
+
+# 本地测试产物与工具记录
+outputs/
+.workbuddy/
+vite.config.ts.timestamp-*.mjs
+
+# 本地环境
+.env*
+!.env.example
+*.log
+.DS_Store
