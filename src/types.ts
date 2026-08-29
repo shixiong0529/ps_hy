@@ -141,6 +141,10 @@ export type AnyObject = fabric.FabricObject & {
   isMask?: boolean
   /** 橡皮擦的内部合成轨迹，不是用户可操作的独立图层 */
   isEraserPath?: boolean
+  /** 画笔在目标图层上的内部绘制轨迹 */
+  isPaintPath?: boolean
+  /** 内部绘制/擦除轨迹所属的用户图层 */
+  effectTargetId?: string
 }
 
 export interface Snapshot {

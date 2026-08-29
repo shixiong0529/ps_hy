@@ -33,6 +33,8 @@ const EXTRA_PROPS = [
   'locked',
   'isMask',
   'isEraserPath',
+  'isPaintPath',
+  'effectTargetId',
   'globalCompositeOperation',
 ]
 const HISTORY_LIMIT = 60
@@ -40,7 +42,8 @@ const MIN_ZOOM = 0.02
 const MAX_ZOOM = 32
 
 const getStore = () => useEditorStore.getState()
-const isLayerObject = (obj: AnyObject) => !obj.isMask && !obj.isEraserPath
+const isInternalEffect = (obj: AnyObject) => !!(obj.isEraserPath || obj.isPaintPath)
+const isLayerObject = (obj: AnyObject) => !obj.isMask && !isInternalEffect(obj)
 
 export class EditorEngine {
   canvas: fabric.Canvas
@@ -67,6 +70,7 @@ export class EditorEngine {
   private pushTimer: number | null = null
   private nameCounters: Record<string, number> = {}
   private tool: ToolId = 'select'
+  private drawingTargetId: string | null = null
   private readonly refreshCanvasOffset = () => {
     if (!this.disposing) this.canvas.calcOffset()
   }
@@ -120,7 +124,7 @@ export class EditorEngine {
     c.on('object:added', (opt) => {
       const target = opt.target as AnyObject | undefined
       if (target?.isMask) return
-      if (target?.isEraserPath) {
+      if (target && isInternalEffect(target)) {
         if (!this.suspending) this.schedulePush()
         return
       }
@@ -129,7 +133,7 @@ export class EditorEngine {
     })
     c.on('object:removed', (opt) => {
       const target = opt.target as AnyObject | undefined
-      if (target?.isMask || target?.isEraserPath) return
+      if (target?.isMask || (target && isInternalEffect(target))) return
       this.syncLayers()
       if (!this.suspending) this.schedulePush()
     })
@@ -163,17 +167,20 @@ export class EditorEngine {
     })
 
     // PencilBrush 会先触发 before:path:created，再把 Path 加到画布。
-    // 必须在 object:added 之前标记内部橡皮擦轨迹，避免图层面板短暂增加一层。
+    // 必须在 object:added 之前标记内部绘制轨迹，避免图层面板短暂增加一层。
     c.on('before:path:created', (opt) => {
       const path = (opt.path ?? null) as AnyObject | null
       if (!path) return
       const erasing = this.tool === 'eraser'
-      if (erasing) {
-        path.isEraserPath = true
+      const paintingIntoLayer = this.tool === 'brush' && !!this.drawingTargetId
+      if (erasing || paintingIntoLayer) {
+        path.isEraserPath = erasing
+        path.isPaintPath = !erasing
+        path.effectTargetId = this.drawingTargetId ?? undefined
         path.set({
-          stroke: '#000000',
+          stroke: erasing ? '#000000' : path.stroke,
           fill: '',
-          globalCompositeOperation: 'destination-out',
+          globalCompositeOperation: erasing ? 'destination-out' : 'source-over',
           selectable: false,
           evented: false,
         } as never)
@@ -188,13 +195,15 @@ export class EditorEngine {
     c.on('path:created', (opt) => {
       const path = (opt.path ?? null) as AnyObject | null
       if (!path) return
-      if (path.isEraserPath) {
+      if (isInternalEffect(path)) {
+        this.placeEffectAfterTarget(path)
         this.canvas.requestRenderAll()
         return
       }
       path.layerId = path.layerId ?? uid('ly')
       path.layerType = 'path'
       path.layerName = path.layerName ?? '画笔'
+      this.drawingTargetId = path.layerId ?? null
       this.syncLayers()
     })
 
@@ -371,10 +380,23 @@ export class EditorEngine {
       this.drawingShape = null
       this.shapeOrigin = null
     }
+    const c = this.canvas
     this.panning = false
+    if (tool === 'brush' || tool === 'eraser') {
+      const active = c
+        .getActiveObjects()
+        .map((obj) => obj as AnyObject)
+        .find((obj) => isLayerObject(obj) && obj.visible !== false && !obj.locked)
+      const fallback = [...c.getObjects()]
+        .reverse()
+        .map((obj) => obj as AnyObject)
+        .find((obj) => isLayerObject(obj) && obj.visible !== false && !obj.locked)
+      this.drawingTargetId = (active ?? fallback)?.layerId ?? null
+    } else {
+      this.drawingTargetId = null
+    }
     this.tool = tool
     const store = getStore()
-    const c = this.canvas
     const brush = store.brush
 
     c.isDrawingMode = tool === 'brush' || tool === 'eraser'
@@ -400,7 +422,7 @@ export class EditorEngine {
     c.forEachObject((o) => {
       const obj = o as AnyObject
       if (obj.isMask) return
-      if (obj.isEraserPath) {
+      if (isInternalEffect(obj)) {
         obj.evented = false
         obj.selectable = false
         return
@@ -650,7 +672,11 @@ export class EditorEngine {
     const objs = this.canvas.getActiveObjects()
     if (!objs.length) return
     this.canvas.discardActiveObject()
-    objs.forEach((o) => this.canvas.remove(o))
+    const effects = objs.flatMap((obj) => {
+      const id = (obj as AnyObject).layerId
+      return id ? this.effectsForLayer(id) : []
+    })
+    this.canvas.remove(...objs, ...effects)
     this.canvas.requestRenderAll()
     this.pushHistoryState()
     this.syncLayers()
@@ -821,6 +847,26 @@ export class EditorEngine {
     return this.canvas.getObjects().find((o) => (o as AnyObject).layerId === id) as AnyObject | undefined
   }
 
+  private effectsForLayer(id: string) {
+    return this.canvas
+      .getObjects()
+      .filter((obj) => isInternalEffect(obj as AnyObject) && (obj as AnyObject).effectTargetId === id) as AnyObject[]
+  }
+
+  private placeEffectAfterTarget(effect: AnyObject) {
+    const targetId = effect.effectTargetId
+    if (!targetId) return
+    const target = this.findById(targetId)
+    if (!target) return
+    const objects = this.canvas.getObjects()
+    const relatedIndexes = objects
+      .map((obj, index) => ({ obj: obj as AnyObject, index }))
+      .filter(({ obj }) => obj === target || (isInternalEffect(obj) && obj.effectTargetId === targetId))
+      .map(({ index }) => index)
+    const insertAt = Math.max(...relatedIndexes.filter((index) => objects[index] !== effect)) + 1
+    this.canvas.moveObjectTo(effect as fabric.FabricObject, insertAt)
+  }
+
   selectLayer(id: string) {
     const obj = this.findById(id)
     if (!obj) return
@@ -836,6 +882,7 @@ export class EditorEngine {
     const obj = this.findById(id)
     if (!obj) return
     obj.set({ visible })
+    this.effectsForLayer(id).forEach((effect) => effect.set({ visible }))
     if (!visible && this.canvas.getActiveObjects().includes(obj as fabric.FabricObject)) {
       this.canvas.discardActiveObject()
     }
@@ -902,13 +949,28 @@ export class EditorEngine {
     this.syncLayers()
   }
 
-  /** 仅重排用户图层，内部橡皮擦轨迹仍留在原来的合成位置。 */
+  /** 以图层为块重排，画笔和橡皮擦的内部轨迹跟随所属图层。 */
   private applyLayerOrder(order: fabric.FabricObject[]) {
-    let layerIndex = 0
-    const merged = this.canvas
-      .getObjects()
-      .map((obj) => (isLayerObject(obj as AnyObject) ? order[layerIndex++] : obj))
-    merged.forEach((obj, index) => this.canvas.moveObjectTo(obj, index))
+    const all = this.canvas.getObjects()
+    const layerIds = new Set(order.map((obj) => (obj as AnyObject).layerId).filter(Boolean))
+    const managed = new Set<fabric.FabricObject>()
+    const orderedBlocks = order.flatMap((layer) => {
+      managed.add(layer)
+      const id = (layer as AnyObject).layerId
+      const effects = id
+        ? all.filter((obj) => {
+            const typed = obj as AnyObject
+            return isInternalEffect(typed) && typed.effectTargetId === id
+          })
+        : []
+      effects.forEach((effect) => managed.add(effect))
+      return [layer, ...effects]
+    })
+    const unmanaged = all.filter((obj) => {
+      const typed = obj as AnyObject
+      return !managed.has(obj) && (!typed.effectTargetId || !layerIds.has(typed.effectTargetId))
+    })
+    ;[...orderedBlocks, ...unmanaged].forEach((obj, index) => this.canvas.moveObjectTo(obj, index))
   }
 
   /** 拖拽排序：把 dragId 移动到 targetId 之前 / 之后 */
@@ -932,7 +994,7 @@ export class EditorEngine {
     if (this.canvas.getActiveObjects().includes(obj as fabric.FabricObject)) {
       this.canvas.discardActiveObject()
     }
-    this.canvas.remove(obj as fabric.FabricObject)
+    this.canvas.remove(obj as fabric.FabricObject, ...this.effectsForLayer(id))
     this.canvas.requestRenderAll()
     this.pushHistoryState()
     this.syncSelection()
@@ -1297,7 +1359,7 @@ export class EditorEngine {
     this.canvas.forEachObject((o) => {
       const obj = o as AnyObject
       if (!isLayerObject(obj)) {
-        if (obj.isEraserPath) {
+        if (isInternalEffect(obj)) {
           obj.selectable = false
           obj.evented = false
         }
