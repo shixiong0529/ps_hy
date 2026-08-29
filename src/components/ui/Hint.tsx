@@ -20,7 +20,7 @@ export function Hint({ label, shortcut, side = 'right', disabled, children }: Pr
       {children}
       {!disabled && (
         <div
-          className={`pointer-events-none absolute z-[80] hidden whitespace-nowrap rounded-md border border-ps-border2 bg-ps-panel3 px-2 py-1 text-[11px] shadow-pop group-hover:flex ${POS[side]}`}
+          className={`pointer-events-none absolute z-[80] hidden whitespace-nowrap rounded-md border border-ps-border2 bg-ps-panel3 px-2 py-1 text-[12px] shadow-pop group-hover:flex ${POS[side]}`}
         >
           <span className="text-ps-text">{label}</span>
           {shortcut && <span className="ml-2 text-ps-muted">{shortcut}</span>}

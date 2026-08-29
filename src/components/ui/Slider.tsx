@@ -44,11 +44,11 @@ export function Slider({
             onChange(resetTo)
             onCommit?.()
           }}
-          className="cursor-default select-none text-[11px] text-ps-dim"
+          className="cursor-default select-none text-[12px] text-ps-dim"
         >
           {label}
         </label>
-        <span className="font-mono text-[11px] text-ps-text">
+        <span className="font-mono text-[12px] text-ps-text">
           {format ? format(value) : Math.round(value)}
           {suffix}
         </span>

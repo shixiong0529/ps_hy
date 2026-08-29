@@ -35,7 +35,7 @@ export function DocumentSection() {
           {t('应用为新画板（会清空内容）')}
         </button>
       </div>
-      <div className="px-3 pb-2 text-[10px] leading-relaxed text-ps-muted">
+      <div className="px-3 pb-2 text-[11px] leading-relaxed text-ps-muted">
         {t('如需改变画布范围而不清空内容，请使用「裁剪画布」或「图像 → 画布旋转 90°」。')}
       </div>
     </div>

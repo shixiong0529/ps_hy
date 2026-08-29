@@ -10,7 +10,7 @@ function Toggle({ on, label, onClick }: { on: boolean; label: string; onClick: (
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+      className={`flex-1 rounded-md border px-2 py-1 text-[12px] transition-colors ${
         on
           ? 'border-ps-accent/50 bg-ps-accentSoft text-ps-accent2'
           : 'border-ps-border bg-ps-panel3 text-ps-dim hover:text-ps-text'
@@ -41,7 +41,7 @@ export function AdjustmentsSection() {
 
   if (!targetId || !adj) {
     return (
-      <div className="px-3 py-3 text-[11px] leading-relaxed text-ps-muted">
+      <div className="px-3 py-3 text-[12px] leading-relaxed text-ps-muted">
         {t('选中一个图片图层后可在此实时调整亮度、对比度、饱和度等参数。')}
       </div>
     )
@@ -50,7 +50,7 @@ export function AdjustmentsSection() {
   return (
     <div>
       <div className="px-3 pb-1.5">
-        <div className="mb-1.5 text-[11px] text-ps-dim">{t('滤镜预设')}</div>
+        <div className="mb-1.5 text-[12px] text-ps-dim">{t('滤镜预设')}</div>
         <div className="grid grid-cols-4 gap-1.5">
           {presets.map((p) => {
             const active = adj.preset === p.id || (p.id === 'none' && !adj.preset)
@@ -72,7 +72,7 @@ export function AdjustmentsSection() {
                   }}
                 />
                 <span
-                  className={`block truncate px-0.5 py-0.5 text-[9px] ${
+                  className={`block truncate px-0.5 py-0.5 text-[10px] ${
                     active ? 'bg-ps-accentSoft text-ps-accent2' : 'bg-ps-panel3 text-ps-muted'
                   }`}
                 >

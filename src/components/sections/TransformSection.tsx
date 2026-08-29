@@ -57,7 +57,7 @@ export function TransformSection() {
           suffix="px"
         />
       </div>
-      <div className="px-3 pb-1 text-[10px] text-ps-muted">{t('宽高比 {ratio}', { ratio: ratio.toFixed(3) })}</div>
+      <div className="px-3 pb-1 text-[11px] text-ps-muted">{t('宽高比 {ratio}', { ratio: ratio.toFixed(3) })}</div>
 
       <Slider
         label={t('旋转')}

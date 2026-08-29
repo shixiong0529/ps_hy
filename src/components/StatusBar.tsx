@@ -20,7 +20,7 @@ export function StatusBar() {
     : '{count} 图层 · 选中 {selected}'
 
   return (
-    <div className="flex h-7 shrink-0 items-center gap-3 border-t border-ps-border bg-ps-panel px-3 text-[11px] text-ps-muted">
+    <div className="flex h-7 shrink-0 items-center gap-3 border-t border-ps-border bg-ps-panel px-3 text-[12px] text-ps-muted">
       <span className="text-ps-dim">{def ? t(def.label) : ''}</span>
       <span className="hidden text-ps-muted md:inline">{def ? t(def.hint) : ''}</span>
 

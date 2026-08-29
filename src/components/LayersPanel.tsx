@@ -105,7 +105,7 @@ export function LayersPanel() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {layers.length === 0 && (
-          <div className="px-3 py-6 text-center text-[11px] leading-relaxed text-ps-muted">
+          <div className="px-3 py-6 text-center text-[12px] leading-relaxed text-ps-muted">
             {t('暂无图层')}
             <br />
             {t('上传图片或添加文字后显示')}
@@ -169,7 +169,7 @@ export function LayersPanel() {
                   <input
                     autoFocus
                     defaultValue={l.name}
-                    className="w-full bg-ps-panel3 border border-ps-accent px-1 py-0.5 text-[11px] outline-none"
+                    className="w-full bg-ps-panel3 border border-ps-accent px-1 py-0.5 text-[12px] outline-none"
                     onClick={(e) => e.stopPropagation()}
                     onBlur={(e) => {
                       engine?.renameLayer(l.id, e.target.value.trim() || l.name)
@@ -182,7 +182,7 @@ export function LayersPanel() {
                   />
                 ) : (
                   <div
-                    className="truncate text-[11px] text-ps-text"
+                    className="truncate text-[12px] text-ps-text"
                     onDoubleClick={(e) => {
                       e.stopPropagation()
                       setEditingId(l.id)
@@ -193,7 +193,7 @@ export function LayersPanel() {
                   </div>
                 )}
                 <div className="mt-0.5 flex items-center gap-1.5">
-                  <span className="text-[9px] uppercase tracking-wide text-ps-muted">{t(LAYER_LABEL[l.type])}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-ps-muted">{t(LAYER_LABEL[l.type])}</span>
                   <input
                     type="range"
                     className={`ps-range h-2 flex-1 ${l.locked ? 'pointer-events-none opacity-40' : ''}`}

@@ -34,9 +34,9 @@ export default {
         mono: ['"SF Mono"', 'ui-monospace', 'Menlo', 'Consolas', 'monospace'],
       },
       fontSize: {
-        '2xs': ['10px', '14px'],
-        xs: ['11px', '16px'],
-sm: ['12px', '18px'],
+        '2xs': ['11px', '15px'],
+        xs: ['12px', '17px'],
+        sm: ['14px', '20px'],
       },
       boxShadow: {
         panel: 'var(--shadow-panel)',

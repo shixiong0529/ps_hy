@@ -15,7 +15,7 @@ export function BrushSection() {
   return (
     <div>
       {!drawing && (
-        <div className="px-3 pb-1 text-[10px] leading-relaxed text-ps-muted">
+        <div className="px-3 pb-1 text-[11px] leading-relaxed text-ps-muted">
           {t('选择画笔 / 橡皮擦工具后，此处参数将作用于新绘制的笔迹。')}
         </div>
       )}

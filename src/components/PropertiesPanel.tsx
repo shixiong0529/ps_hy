@@ -33,7 +33,7 @@ export function PropertiesPanel() {
         ) : (
           <>
             {activeCount > 1 && (
-              <div className="border-b border-ps-border px-3 py-2 text-[11px] text-ps-dim">
+              <div className="border-b border-ps-border px-3 py-2 text-[12px] text-ps-dim">
                 {t('已选中 {count} 个对象，可整体移动 / 缩放 / 旋转 / 删除', { count: activeCount })}
               </div>
             )}

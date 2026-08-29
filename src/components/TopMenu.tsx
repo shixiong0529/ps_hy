@@ -55,7 +55,7 @@ function Dropdown({ label, items }: { label: string; items: MenuItem[] }) {
                 }}
               >
                 <span>{it.label}</span>
-                {it.shortcut && <span className="font-mono text-[10px] text-ps-muted">{it.shortcut}</span>}
+                {it.shortcut && <span className="font-mono text-[11px] text-ps-muted">{it.shortcut}</span>}
               </button>
             ),
           )}
@@ -79,7 +79,7 @@ function Brand() {
           </linearGradient>
         </defs>
       </svg>
-      <span className="text-[13px] font-semibold tracking-wide text-ps-text">
+      <span className="text-[14px] font-semibold tracking-wide text-ps-text">
         Pixel<span className="text-ps-accent2">Forge</span>
       </span>
     </div>
@@ -188,7 +188,7 @@ export function TopMenu() {
           aria-label={t(language === 'zh' ? '切换到英文' : '切换到中文')}
         >
           <Languages size={14} />
-          <span className="text-[10px] font-semibold">{language === 'zh' ? 'EN' : '中'}</span>
+          <span className="text-[11px] font-semibold">{language === 'zh' ? 'EN' : '中'}</span>
         </button>
         <div className="mx-1 h-5 w-px bg-ps-border" />
         <button className="btn h-7 px-2" disabled={!canUndo} onClick={() => engine?.undo()} title={`${t('撤销')} ${modKey()}+Z`}>

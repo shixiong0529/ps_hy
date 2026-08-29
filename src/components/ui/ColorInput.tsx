@@ -35,7 +35,7 @@ export function ColorInput({ label, value, onChange, allowTransparent }: Props) 
 
   return (
     <div className="px-3 py-1.5">
-      <div className="mb-1 text-[11px] text-ps-dim">{label}</div>
+      <div className="mb-1 text-[12px] text-ps-dim">{label}</div>
       <div className="flex items-center gap-1.5">
         <div
           className="h-6 w-6 shrink-0 overflow-hidden rounded border border-ps-border2"
@@ -58,7 +58,7 @@ export function ColorInput({ label, value, onChange, allowTransparent }: Props) 
         </div>
         <input
           type="text"
-          className="min-w-0 flex-1 bg-ps-panel3 border border-ps-border rounded px-2 py-1 font-mono text-[11px] uppercase outline-none focus:border-ps-accent"
+          className="min-w-0 flex-1 bg-ps-panel3 border border-ps-border rounded px-2 py-1 font-mono text-[12px] uppercase outline-none focus:border-ps-accent"
           value={draft}
           onChange={(e) => {
             const next = e.target.value
@@ -76,7 +76,7 @@ export function ColorInput({ label, value, onChange, allowTransparent }: Props) 
         />
         {allowTransparent && (
           <button
-            className="btn btn-ghost shrink-0 px-1.5 text-[10px]"
+            className="btn btn-ghost shrink-0 px-1.5 text-[11px]"
             onClick={() => {
               setDraft('transparent')
               onChange('transparent')

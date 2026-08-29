@@ -56,20 +56,20 @@ export function ExportDialog() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-[420px] max-w-[92vw] overflow-hidden rounded-xl border border-ps-border2 bg-ps-panel shadow-pop">
         <div className="flex items-center justify-between border-b border-ps-border px-4 py-2.5">
-          <h3 className="text-[13px] font-medium text-ps-text">{t('导出图片')}</h3>
+          <h3 className="text-[14px] font-medium text-ps-text">{t('导出图片')}</h3>
           <button className="btn h-6 w-6 p-0" onClick={() => setOpen(false)}>
             <X size={14} />
           </button>
         </div>
 
         <div className="px-4 py-3">
-          <div className="mb-3 text-[11px] text-ps-dim">{t('格式')}</div>
+          <div className="mb-3 text-[12px] text-ps-dim">{t('格式')}</div>
           <div className="mb-4 grid grid-cols-3 gap-1.5">
             {FORMATS.map((f) => (
               <button
                 key={f.id}
                 onClick={() => setOpts({ format: f.id })}
-                className={`rounded-md border px-2 py-1.5 text-[11px] transition-colors ${
+                className={`rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
                   opts.format === f.id
                     ? 'border-ps-accent bg-ps-accentSoft text-ps-accent2'
                     : 'border-ps-border bg-ps-panel3 text-ps-dim hover:text-ps-text'
@@ -81,7 +81,7 @@ export function ExportDialog() {
           </div>
 
           {opts.format === 'png' && (
-            <label className="mb-3 flex items-center gap-2 text-[11px] text-ps-dim">
+            <label className="mb-3 flex items-center gap-2 text-[12px] text-ps-dim">
               <input
                 type="checkbox"
                 className="h-3.5 w-3.5 accent-[#3d7eff]"
@@ -103,13 +103,13 @@ export function ExportDialog() {
             />
           )}
 
-          <div className="mb-3 mt-2 text-[11px] text-ps-dim">{t('输出倍率')}</div>
+          <div className="mb-3 mt-2 text-[12px] text-ps-dim">{t('输出倍率')}</div>
           <div className="mb-4 grid grid-cols-3 gap-1.5">
             {SCALES.map((s) => (
               <button
                 key={s}
                 onClick={() => setOpts({ scale: s })}
-                className={`rounded-md border px-2 py-1.5 text-[11px] transition-colors ${
+                className={`rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
                   opts.scale === s
                     ? 'border-ps-accent bg-ps-accentSoft text-ps-accent2'
                     : 'border-ps-border bg-ps-panel3 text-ps-dim hover:text-ps-text'
@@ -120,18 +120,18 @@ export function ExportDialog() {
             ))}
           </div>
 
-          <div className="mb-1 text-[11px] text-ps-dim">{t('文件名')}</div>
+          <div className="mb-1 text-[12px] text-ps-dim">{t('文件名')}</div>
           <div className="flex items-center gap-1 rounded-md border border-ps-border bg-ps-panel3 px-2 py-1">
             <input
               type="text"
-              className="min-w-0 flex-1 border-none bg-transparent p-0 text-[11px] outline-none"
+              className="min-w-0 flex-1 border-none bg-transparent p-0 text-[12px] outline-none"
               value={opts.filename}
               onChange={(e) => setOpts({ filename: e.target.value })}
             />
-            <span className="shrink-0 font-mono text-[11px] text-ps-muted">.{EXPORT_EXT[opts.format]}</span>
+            <span className="shrink-0 font-mono text-[12px] text-ps-muted">.{EXPORT_EXT[opts.format]}</span>
           </div>
 
-          <div className="mt-3 rounded-md border border-ps-border bg-ps-panel2 px-3 py-2 text-[11px] text-ps-muted">
+          <div className="mt-3 rounded-md border border-ps-border bg-ps-panel2 px-3 py-2 text-[12px] text-ps-muted">
             {t('输出尺寸')} <span className="font-mono text-ps-text">{outW} × {outH}</span> px
             <br />
             {t('仅包含画板内的图像内容，不含编辑器界面')}

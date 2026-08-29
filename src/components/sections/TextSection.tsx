@@ -29,9 +29,9 @@ export function TextSection() {
   return (
     <div>
       <div className="px-3 py-1.5">
-        <div className="mb-1 text-[11px] text-ps-dim">{t('内容')}</div>
+        <div className="mb-1 text-[12px] text-ps-dim">{t('内容')}</div>
         <textarea
-          className="w-full resize-y bg-ps-panel3 border border-ps-border rounded px-2 py-1.5 text-[11px] outline-none focus:border-ps-accent"
+          className="w-full resize-y bg-ps-panel3 border border-ps-border rounded px-2 py-1.5 text-[12px] outline-none focus:border-ps-accent"
           rows={3}
           value={selection.text ?? ''}
           onChange={(e) => set({ text: e.target.value }, false)}
@@ -40,9 +40,9 @@ export function TextSection() {
       </div>
 
       <div className="px-3 py-1.5">
-        <div className="mb-1 text-[11px] text-ps-dim">{t('字体')}</div>
+        <div className="mb-1 text-[12px] text-ps-dim">{t('字体')}</div>
         <select
-          className="w-full bg-ps-panel3 border border-ps-border rounded px-2 py-1 text-[11px] outline-none focus:border-ps-accent"
+          className="w-full bg-ps-panel3 border border-ps-border rounded px-2 py-1 text-[12px] outline-none focus:border-ps-accent"
           value={selection.fontFamily ?? textStyle.fontFamily}
           onChange={(e) => {
             setTextStyle({ fontFamily: e.target.value })
