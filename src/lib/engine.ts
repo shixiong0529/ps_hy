@@ -26,12 +26,21 @@ import type {
 /* 注册内置滤镜预设（后续接入 AI 滤镜 / 抠图，同样调用 registerFilterPreset 即可） */
 BUILTIN_PRESETS.forEach(registerFilterPreset)
 
-const EXTRA_PROPS = ['layerId', 'layerName', 'layerType', 'locked', 'isMask', 'globalCompositeOperation']
+const EXTRA_PROPS = [
+  'layerId',
+  'layerName',
+  'layerType',
+  'locked',
+  'isMask',
+  'isEraserPath',
+  'globalCompositeOperation',
+]
 const HISTORY_LIMIT = 60
 const MIN_ZOOM = 0.02
 const MAX_ZOOM = 32
 
 const getStore = () => useEditorStore.getState()
+const isLayerObject = (obj: AnyObject) => !obj.isMask && !obj.isEraserPath
 
 export class EditorEngine {
   canvas: fabric.Canvas
@@ -109,12 +118,18 @@ export class EditorEngine {
     const c = this.canvas
 
     c.on('object:added', (opt) => {
-      if ((opt.target as AnyObject | undefined)?.isMask) return
+      const target = opt.target as AnyObject | undefined
+      if (target?.isMask) return
+      if (target?.isEraserPath) {
+        if (!this.suspending) this.schedulePush()
+        return
+      }
       this.syncLayers()
       if (!this.suspending) this.schedulePush()
     })
     c.on('object:removed', (opt) => {
-      if ((opt.target as AnyObject | undefined)?.isMask) return
+      const target = opt.target as AnyObject | undefined
+      if (target?.isMask || target?.isEraserPath) return
       this.syncLayers()
       if (!this.suspending) this.schedulePush()
     })
@@ -147,18 +162,39 @@ export class EditorEngine {
       if (!this.suspending) this.schedulePush()
     })
 
-    c.on('path:created', (opt) => {
+    // PencilBrush 会先触发 before:path:created，再把 Path 加到画布。
+    // 必须在 object:added 之前标记内部橡皮擦轨迹，避免图层面板短暂增加一层。
+    c.on('before:path:created', (opt) => {
       const path = (opt.path ?? null) as AnyObject | null
       if (!path) return
       const erasing = this.tool === 'eraser'
       if (erasing) {
-        path.set({ stroke: '#000000', fill: '', globalCompositeOperation: 'destination-out' } as never)
+        path.isEraserPath = true
+        path.set({
+          stroke: '#000000',
+          fill: '',
+          globalCompositeOperation: 'destination-out',
+          selectable: false,
+          evented: false,
+        } as never)
         path.dirty = true
-        this.canvas.requestRenderAll()
+        return
       }
       path.layerId = path.layerId ?? uid('ly')
       path.layerType = 'path'
-      path.layerName = erasing ? '橡皮擦' : '画笔'
+      path.layerName = '画笔'
+    })
+
+    c.on('path:created', (opt) => {
+      const path = (opt.path ?? null) as AnyObject | null
+      if (!path) return
+      if (path.isEraserPath) {
+        this.canvas.requestRenderAll()
+        return
+      }
+      path.layerId = path.layerId ?? uid('ly')
+      path.layerType = 'path'
+      path.layerName = path.layerName ?? '画笔'
       this.syncLayers()
     })
 
@@ -364,6 +400,11 @@ export class EditorEngine {
     c.forEachObject((o) => {
       const obj = o as AnyObject
       if (obj.isMask) return
+      if (obj.isEraserPath) {
+        obj.evented = false
+        obj.selectable = false
+        return
+      }
       obj.evented = !inCrop && !obj.locked
       obj.selectable = !inCrop && !obj.locked
     })
@@ -468,7 +509,7 @@ export class EditorEngine {
   async addImageFromDataUrl(dataUrl: string, name?: string) {
     try {
       const img = await fabric.FabricImage.fromURL(dataUrl, { crossOrigin: 'anonymous' })
-      const isFirst = !this.canvas.getObjects().some((o) => !(o as AnyObject).isMask)
+      const isFirst = !this.canvas.getObjects().some((o) => isLayerObject(o as AnyObject))
 
       if (isFirst) {
         this.docSize = {
@@ -656,7 +697,7 @@ export class EditorEngine {
   selectAll() {
     const objs = this.canvas
       .getObjects()
-      .filter((o) => !(o as AnyObject).isMask && o.visible && o.selectable)
+      .filter((o) => isLayerObject(o as AnyObject) && o.visible && o.selectable)
     if (!objs.length) return
     this.canvas.discardActiveObject()
     this.canvas.setActiveObject(new fabric.ActiveSelection(objs, { canvas: this.canvas }))
@@ -758,7 +799,7 @@ export class EditorEngine {
     const active = new Set(this.canvas.getActiveObjects().map((o) => (o as AnyObject).layerId))
     const layers: LayerMeta[] = this.canvas
       .getObjects()
-      .filter((o) => !(o as AnyObject).isMask)
+      .filter((o) => isLayerObject(o as AnyObject))
       .map((o) => {
         const obj = o as AnyObject
         return {
@@ -841,26 +882,45 @@ export class EditorEngine {
   reorderLayer(id: string, action: 'up' | 'down' | 'top' | 'bottom') {
     const obj = this.findById(id)
     if (!obj) return
-    const o = obj as fabric.FabricObject
-    if (action === 'up') this.canvas.bringObjectForward(o)
-    else if (action === 'down') this.canvas.sendObjectBackwards(o)
-    else if (action === 'top') this.canvas.bringObjectToFront(o)
-    else this.canvas.sendObjectToBack(o)
+    const order = this.canvas.getObjects().filter((o) => isLayerObject(o as AnyObject))
+    const from = order.indexOf(obj as fabric.FabricObject)
+    if (from < 0) return
+    const to =
+      action === 'up'
+        ? Math.min(order.length - 1, from + 1)
+        : action === 'down'
+          ? Math.max(0, from - 1)
+          : action === 'top'
+            ? order.length - 1
+            : 0
+    if (from === to) return
+    order.splice(from, 1)
+    order.splice(to, 0, obj as fabric.FabricObject)
+    this.applyLayerOrder(order)
     this.canvas.requestRenderAll()
     this.pushHistoryState()
     this.syncLayers()
   }
 
+  /** 仅重排用户图层，内部橡皮擦轨迹仍留在原来的合成位置。 */
+  private applyLayerOrder(order: fabric.FabricObject[]) {
+    let layerIndex = 0
+    const merged = this.canvas
+      .getObjects()
+      .map((obj) => (isLayerObject(obj as AnyObject) ? order[layerIndex++] : obj))
+    merged.forEach((obj, index) => this.canvas.moveObjectTo(obj, index))
+  }
+
   /** 拖拽排序：把 dragId 移动到 targetId 之前 / 之后 */
   moveLayerTo(dragId: string, targetId: string, position: 'before' | 'after') {
-    const objs = this.canvas.getObjects().filter((o) => !(o as AnyObject).isMask)
+    const objs = this.canvas.getObjects().filter((o) => isLayerObject(o as AnyObject))
     const drag = objs.find((o) => (o as AnyObject).layerId === dragId)
     const target = objs.find((o) => (o as AnyObject).layerId === targetId)
     if (!drag || !target || drag === target) return
     const topFirst = [...objs].reverse().filter((o) => o !== drag)
     const targetIndex = topFirst.indexOf(target)
     topFirst.splice(position === 'before' ? targetIndex : targetIndex + 1, 0, drag)
-    topFirst.reverse().forEach((obj, index) => this.canvas.moveObjectTo(obj, index))
+    this.applyLayerOrder(topFirst.reverse())
     this.canvas.requestRenderAll()
     this.pushHistoryState()
     this.syncLayers()
@@ -1236,7 +1296,13 @@ export class EditorEngine {
   private ensureIds() {
     this.canvas.forEachObject((o) => {
       const obj = o as AnyObject
-      if (obj.isMask) return
+      if (!isLayerObject(obj)) {
+        if (obj.isEraserPath) {
+          obj.selectable = false
+          obj.evented = false
+        }
+        return
+      }
       if (!obj.layerId) obj.layerId = uid('ly')
       if (!obj.layerType) obj.layerType = this.guessType(obj)
       if (!obj.layerName) obj.layerName = this.nextName(obj.layerType)

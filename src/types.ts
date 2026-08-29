@@ -139,6 +139,8 @@ export type AnyObject = fabric.FabricObject & {
   layerType?: LayerType
   locked?: boolean
   isMask?: boolean
+  /** 橡皮擦的内部合成轨迹，不是用户可操作的独立图层 */
+  isEraserPath?: boolean
 }
 
 export interface Snapshot {
