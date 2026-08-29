@@ -165,7 +165,7 @@ export function TopMenu() {
   ]
 
   return (
-    <div className="flex h-11 shrink-0 items-center gap-1 border-b border-ps-border bg-ps-panel px-3">
+    <div className="top-menu-bar flex h-11 shrink-0 items-center gap-1 border-b border-ps-border px-3">
       <Brand />
       <div className="mx-1 h-5 w-px bg-ps-border" />
       {menus.map((m) => (

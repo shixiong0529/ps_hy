@@ -19,6 +19,7 @@
     --ps-accent-soft: 28 42 69;
     --ps-danger: 239 68 68;
     --ps-ok: 34 197 94;
+    --top-menu-bg: #14171e;
     --workspace-bg: #0a0c10;
     --workspace-dot: rgba(255, 255, 255, 0.055);
     --scrollbar: #2c3441;
@@ -46,6 +47,7 @@
     --ps-accent-soft: 231 239 255;
     --ps-danger: 220 38 38;
     --ps-ok: 22 163 74;
+    --top-menu-bg: #f5f7f9;
     --workspace-bg: #d9dee7;
     --workspace-dot: rgba(48, 58, 75, 0.11);
     --scrollbar: #c9d0db;
@@ -131,6 +133,10 @@
 }
 
 @layer components {
+  .top-menu-bar {
+    background-color: var(--top-menu-bg);
+  }
+
   /* ---- 工作区背景（点阵） ---- */
   .workspace-grid {
     background-color: var(--workspace-bg);
