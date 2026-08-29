@@ -31,7 +31,7 @@ function Dropdown({ label, items }: { label: string; items: MenuItem[] }) {
   return (
     <div ref={ref} className="relative">
       <button
-        className={`rounded px-2 py-1 text-xs transition-colors ${
+        className={`rounded px-2 py-1 text-[14px] font-medium transition-colors ${
           open ? 'bg-ps-panel3 text-ps-text' : 'text-ps-dim hover:text-ps-text'
         }`}
         onMouseEnter={() => anyOpen && useEditorStore.setState({ openMenu: label })}
