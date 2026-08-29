@@ -8,6 +8,37 @@ import type {
   SelectionSnapshot,
   ToolId,
 } from '@/types'
+import type { Language, ThemeMode } from '@/lib/i18n'
+
+const getStoredPreference = <T extends string>(key: string, allowed: readonly T[], fallback: T): T => {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const saved = window.localStorage.getItem(key) as T | null
+    return saved && allowed.includes(saved) ? saved : fallback
+  } catch {
+    return fallback
+  }
+}
+
+const setStoredPreference = (key: string, value: string) => {
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // 存储不可用时仍允许本次会话切换主题与语言。
+  }
+}
+
+const initialTheme = getStoredPreference<ThemeMode>('pixelforge-theme', ['dark', 'light'], 'dark')
+const initialLanguage = getStoredPreference<Language>('pixelforge-language', ['zh', 'en'], 'zh')
+
+const applyPreferences = (theme: ThemeMode, language: Language) => {
+  if (typeof document === 'undefined') return
+  document.documentElement.dataset.theme = theme
+  document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en'
+  document.title = language === 'zh' ? 'PixelForge · 网页图片编辑器' : 'PixelForge · Web Image Editor'
+}
+
+applyPreferences(initialTheme, initialLanguage)
 
 export interface Toast {
   id: number
@@ -68,6 +99,8 @@ interface EditorState {
   canRedo: boolean
 
   /* UI */
+  theme: ThemeMode
+  language: Language
   exportOpen: boolean
   shortcutsOpen: boolean
   /** 当前展开的顶部菜单标题 */
@@ -90,6 +123,8 @@ interface EditorState {
   setAdjustment: (layerId: string, patch: Partial<Adjustments>) => void
   setAdjustTarget: (id: string | null) => void
   resetAdjustments: (layerId: string) => void
+  setTheme: (theme: ThemeMode) => void
+  setLanguage: (language: Language) => void
   setExportOpen: (v: boolean) => void
   setShortcutsOpen: (v: boolean) => void
   setExportOptions: (p: Partial<ExportOptions>) => void
@@ -129,6 +164,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   canUndo: false,
   canRedo: false,
 
+  theme: initialTheme,
+  language: initialLanguage,
   exportOpen: false,
   shortcutsOpen: false,
   openMenu: null,
@@ -174,6 +211,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => ({
       adjustments: { ...s.adjustments, [layerId]: { ...DEFAULT_ADJUSTMENTS } },
     })),
+
+  setTheme: (theme) => {
+    setStoredPreference('pixelforge-theme', theme)
+    applyPreferences(theme, get().language)
+    set({ theme })
+  },
+  setLanguage: (language) => {
+    setStoredPreference('pixelforge-language', language)
+    applyPreferences(get().theme, language)
+    set({ language, openMenu: null })
+  },
 
   setExportOpen: (v) => set({ exportOpen: v }),
   setShortcutsOpen: (v) => set({ shortcutsOpen: v }),

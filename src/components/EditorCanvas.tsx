@@ -3,8 +3,10 @@ import { useEditorStore } from '@/store/editorStore'
 import { EditorEngine } from '@/lib/engine'
 import { CROP_CURSOR, isAcceptedImageFile } from '@/lib/defaults'
 import { ImagePlus, MousePointerClick } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
 
 export function EditorCanvas() {
+  const { t } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engine = useEditorStore((s) => s.engine)
@@ -54,7 +56,7 @@ export function EditorCanvas() {
     const files = Array.from(e.dataTransfer.files ?? [])
     const img = files.find(isAcceptedImageFile)
     if (img && engine) void engine.addImageFromFile(img)
-    else if (files.length) toast('请拖入 JPG / PNG / WebP 图片', 'error')
+    else if (files.length) toast(t('请拖入 JPG / PNG / WebP 图片'), 'error')
   }
 
   const isEmpty = layers.length === 0
@@ -98,13 +100,13 @@ export function EditorCanvas() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-ps-accentSoft text-ps-accent2">
               <ImagePlus size={26} />
             </div>
-            <h2 className="mb-1.5 text-sm font-medium text-ps-text">拖拽图片到这里开始编辑</h2>
+            <h2 className="mb-1.5 text-sm font-medium text-ps-text">{t('拖拽图片到这里开始编辑')}</h2>
             <p className="mb-5 text-xs leading-relaxed text-ps-muted">
-              支持 JPG / PNG / WebP，也可以直接 Ctrl/⌘ + V 粘贴剪贴板图片
+              {t('支持 JPG / PNG / WebP，也可以直接 Ctrl/⌘ + V 粘贴剪贴板图片')}
             </p>
             <label className="btn btn-primary pointer-events-auto cursor-pointer px-4 py-1.5">
               <MousePointerClick size={14} />
-              选择图片
+              {t('选择图片')}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"

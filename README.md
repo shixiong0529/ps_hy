@@ -1,6 +1,6 @@
 # PixelForge 网页图片编辑器
 
-PixelForge 是一个基于 React、TypeScript、Fabric.js 和 Zustand 的浏览器端图片编辑器。项目保留了 Photoshop 风格的深色界面，并提供图片、文字、图形、画笔、图层、滤镜、历史记录和导出等常用编辑能力。
+PixelForge 是一个基于 React、TypeScript、Fabric.js 和 Zustand 的浏览器端图片编辑器。项目保留了 Photoshop 风格的界面，并提供图片、文字、图形、画笔、图层、滤镜、历史记录和导出等常用编辑能力。
 
 所有编辑都在浏览器本地完成，项目当前不包含后端服务，也不会主动上传用户图片。
 
@@ -17,6 +17,8 @@ PixelForge 是一个基于 React、TypeScript、Fabric.js 和 Zustand 的浏览�
 - 亮度、对比度、饱和度、曝光、色温、模糊及多种滤镜预设
 - 最多 60 步撤销 / 重做历史
 - PNG、JPG、WebP 导出，可设置透明背景、质量和输出倍率
+- 浅色 / 深色界面一键切换，并自动记住上次选择
+- 中文 / English 界面一键切换，并自动记住上次选择
 
 ## 环境要求
 
@@ -70,11 +72,12 @@ src/
 ├── components/          # 编辑器界面、图层和属性面板
 │   ├── sections/        # 不同对象类型的属性区块
 │   └── ui/              # 通用输入与展示组件
-├── hooks/               # 全局快捷键
+├── hooks/               # 全局快捷键和界面翻译 Hook
 ├── lib/
 │   ├── engine.ts        # Fabric 画布、对象、图层、历史和导出核心
 │   ├── adjustments.ts   # 图片滤镜与参数映射
 │   ├── defaults.ts      # 默认配置和通用常量
+│   ├── i18n.ts          # 中英文界面文案
 │   └── registry.ts      # 滤镜预设注册
 ├── store/               # Zustand 编辑器状态
 ├── types.ts             # 共享类型

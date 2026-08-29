@@ -12,9 +12,9 @@ export function Toasts() {
           key={t.id}
           className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs shadow-pop backdrop-blur ${
             t.kind === 'error'
-              ? 'border-ps-danger/40 bg-ps-danger/15 text-red-200'
+              ? 'border-ps-danger/40 bg-ps-danger/15 text-ps-danger'
               : t.kind === 'success'
-                ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+                ? 'border-ps-ok/40 bg-ps-ok/15 text-ps-ok'
                 : 'border-ps-border2 bg-ps-panel3/90 text-ps-text'
           }`}
         >

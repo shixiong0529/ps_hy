@@ -1,8 +1,10 @@
 import { useEditorStore } from '@/store/editorStore'
 import { ColorInput } from '../ui/ColorInput'
 import { Slider } from '../ui/Slider'
+import { useI18n } from '@/hooks/useI18n'
 
 export function BrushSection() {
+  const { t } = useI18n()
   const tool = useEditorStore((s) => s.tool)
   const brush = useEditorStore((s) => s.brush)
   const setBrush = useEditorStore((s) => s.setBrush)
@@ -14,12 +16,12 @@ export function BrushSection() {
     <div>
       {!drawing && (
         <div className="px-3 pb-1 text-[10px] leading-relaxed text-ps-muted">
-          选择画笔 / 橡皮擦工具后，此处参数将作用于新绘制的笔迹。
+          {t('选择画笔 / 橡皮擦工具后，此处参数将作用于新绘制的笔迹。')}
         </div>
       )}
       {tool !== 'eraser' && (
         <ColorInput
-          label="画笔颜色"
+          label={t('画笔颜色')}
           value={brush.color}
           onChange={(v) => {
             setBrush({ color: v })
@@ -28,7 +30,7 @@ export function BrushSection() {
         />
       )}
       <Slider
-        label="笔刷大小"
+        label={t('笔刷大小')}
         value={brush.width}
         min={1}
         max={200}
@@ -39,7 +41,7 @@ export function BrushSection() {
         }}
       />
       <Slider
-        label="笔刷不透明度"
+        label={t('笔刷不透明度')}
         value={brush.opacity}
         min={1}
         max={100}
@@ -52,7 +54,7 @@ export function BrushSection() {
       <div className="flex items-center gap-2 px-3 py-2">
         <div
           className="checkerboard flex h-10 flex-1 items-center justify-center rounded border border-ps-border"
-          title="笔刷预览"
+          title={t('笔刷预览')}
         >
           <span
             className="block rounded-full"

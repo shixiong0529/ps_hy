@@ -21,6 +21,7 @@ import { useEditorStore } from '@/store/editorStore'
 import { LAYER_LABEL } from '@/lib/defaults'
 import type { LayerType } from '@/types'
 import { Hint } from './ui/Hint'
+import { useI18n } from '@/hooks/useI18n'
 
 const TYPE_ICON: Record<LayerType, LucideIcon> = {
   image: ImageIcon,
@@ -35,6 +36,7 @@ const TYPE_ICON: Record<LayerType, LucideIcon> = {
 }
 
 export function LayersPanel() {
+  const { t } = useI18n()
   const layers = useEditorStore((s) => s.layers)
   const engine = useEditorStore((s) => s.engine)
   const revision = useEditorStore((s) => s.layerRevision)
@@ -72,9 +74,9 @@ export function LayersPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-ps-panel">
       <div className="section-title">
-        <span>图层 {layers.length > 0 && <span className="text-ps-muted">({layers.length})</span>}</span>
+        <span>{t('图层')} {layers.length > 0 && <span className="text-ps-muted">({layers.length})</span>}</span>
         <div className="flex items-center gap-0.5">
-          <Hint label="上移一层" side="left">
+          <Hint label={t('上移一层')} side="left">
             <button
               className="btn h-5 w-5 p-0"
               disabled={layers.length < 2}
@@ -86,7 +88,7 @@ export function LayersPanel() {
               <ChevronUp size={13} />
             </button>
           </Hint>
-          <Hint label="下移一层" side="left">
+          <Hint label={t('下移一层')} side="left">
             <button
               className="btn h-5 w-5 p-0"
               disabled={layers.length < 2}
@@ -104,9 +106,9 @@ export function LayersPanel() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {layers.length === 0 && (
           <div className="px-3 py-6 text-center text-[11px] leading-relaxed text-ps-muted">
-            暂无图层
+            {t('暂无图层')}
             <br />
-            上传图片或添加文字后显示
+            {t('上传图片或添加文字后显示')}
           </div>
         )}
 
@@ -146,7 +148,7 @@ export function LayersPanel() {
                   e.stopPropagation()
                   engine?.setLayerVisible(l.id, !l.visible)
                 }}
-                title={l.visible ? '隐藏图层' : '显示图层'}
+                title={t(l.visible ? '隐藏图层' : '显示图层')}
               >
                 {l.visible ? <Eye size={14} /> : <EyeOff size={14} className="text-ps-muted/50" />}
               </button>
@@ -185,13 +187,13 @@ export function LayersPanel() {
                       e.stopPropagation()
                       setEditingId(l.id)
                     }}
-                    title="双击重命名"
+                    title={t('双击重命名')}
                   >
                     {l.name}
                   </div>
                 )}
                 <div className="mt-0.5 flex items-center gap-1.5">
-                  <span className="text-[9px] uppercase tracking-wide text-ps-muted">{LAYER_LABEL[l.type]}</span>
+                  <span className="text-[9px] uppercase tracking-wide text-ps-muted">{t(LAYER_LABEL[l.type])}</span>
                   <input
                     type="range"
                     className={`ps-range h-2 flex-1 ${l.locked ? 'pointer-events-none opacity-40' : ''}`}
@@ -205,7 +207,7 @@ export function LayersPanel() {
                     onPointerUp={() => engine?.pushHistoryState()}
                     onKeyUp={() => engine?.pushHistoryState()}
                     onBlur={() => engine?.pushHistoryState()}
-                    title="图层不透明度"
+                    title={t('图层不透明度')}
                   />
                 </div>
               </div>
@@ -217,10 +219,10 @@ export function LayersPanel() {
                     onClick={(e) => {
                       e.stopPropagation()
                       if (!engine?.editText(l.id)) {
-                        toast(l.locked ? '图层已锁定，请先解锁' : '图层已隐藏，请先显示', 'error')
+                        toast(t(l.locked ? '图层已锁定，请先解锁' : '图层已隐藏，请先显示'), 'error')
                       }
                     }}
-                    title="编辑文字"
+                    title={t('编辑文字')}
                   >
                     <PencilLine size={12} />
                   </button>
@@ -230,9 +232,9 @@ export function LayersPanel() {
                   onClick={(e) => {
                     e.stopPropagation()
                     if (engine?.selectLayer(l.id)) engine.duplicateActive()
-                    else toast(l.locked ? '图层已锁定，请先解锁' : '图层已隐藏，请先显示', 'error')
+                    else toast(t(l.locked ? '图层已锁定，请先解锁' : '图层已隐藏，请先显示'), 'error')
                   }}
-                  title="复制图层"
+                  title={t('复制图层')}
                 >
                   <Copy size={12} />
                 </button>
@@ -242,7 +244,7 @@ export function LayersPanel() {
                     e.stopPropagation()
                     engine?.setLayerLocked(l.id, !l.locked)
                   }}
-                  title={l.locked ? '解锁图层' : '锁定图层'}
+                  title={t(l.locked ? '解锁图层' : '锁定图层')}
                 >
                   {l.locked ? <Lock size={12} className="text-ps-accent2" /> : <Unlock size={12} />}
                 </button>
@@ -252,7 +254,7 @@ export function LayersPanel() {
                     e.stopPropagation()
                     engine?.deleteLayer(l.id)
                   }}
-                  title="删除图层"
+                  title={t('删除图层')}
                 >
                   <Trash2 size={12} />
                 </button>
@@ -267,7 +269,7 @@ export function LayersPanel() {
       </div>
 
       <div className="flex items-center gap-0.5 border-t border-ps-border px-2 py-1.5">
-        <Hint label="置于顶层" side="left">
+        <Hint label={t('置于顶层')} side="left">
           <button
             className="btn h-6 px-1.5"
             onClick={() => {
@@ -278,7 +280,7 @@ export function LayersPanel() {
             <ArrowUpToLine size={13} />
           </button>
         </Hint>
-        <Hint label="置于底层" side="left">
+        <Hint label={t('置于底层')} side="left">
           <button
             className="btn h-6 px-1.5"
             onClick={() => {
@@ -296,7 +298,7 @@ export function LayersPanel() {
               const id = layers.find((l) => l.active)?.id
               if (id) engine?.deleteLayer(id)
             }}
-            title="删除选中图层"
+            title={t('删除选中图层')}
           >
             <Trash2 size={13} />
           </button>

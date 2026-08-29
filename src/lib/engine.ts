@@ -13,6 +13,7 @@ import {
   uid,
 } from './defaults'
 import { BUILTIN_PRESETS, registerFilterPreset } from './registry'
+import { translate } from './i18n'
 import type {
   Adjustments,
   AnyObject,
@@ -45,6 +46,8 @@ const MIN_ZOOM = 0.02
 const MAX_ZOOM = 32
 
 const getStore = () => useEditorStore.getState()
+const t = (source: string, vars?: Record<string, string | number>) =>
+  translate(getStore().language, source, vars)
 const isInternalEffect = (obj: AnyObject) => !!(obj.isEraserPath || obj.isPaintPath)
 const isLayerObject = (obj: AnyObject) => !obj.isMask && !isInternalEffect(obj)
 
@@ -259,7 +262,7 @@ export class EditorEngine {
       }
       path.layerId = path.layerId ?? uid('ly')
       path.layerType = 'path'
-      path.layerName = '画笔'
+      path.layerName = t('画笔')
     })
 
     c.on('path:created', (opt) => {
@@ -271,7 +274,7 @@ export class EditorEngine {
           // 留下来只会变成谁都管不到、导出却又会出现的孤儿
           this.canvas.remove(path as fabric.FabricObject)
           this.canvas.requestRenderAll()
-          getStore().toast('没有可编辑的图层，请先显示或解锁目标图层', 'error')
+          getStore().toast(t('没有可编辑的图层，请先显示或解锁目标图层'), 'error')
           return
         }
         this.placeEffectAfterTarget(path)
@@ -280,7 +283,7 @@ export class EditorEngine {
       }
       path.layerId = path.layerId ?? uid('ly')
       path.layerType = 'path'
-      path.layerName = path.layerName ?? '画笔'
+      path.layerName = path.layerName ?? t('画笔')
       this.drawingTargetId = path.layerId ?? null
       this.syncLayers()
     })
@@ -706,7 +709,7 @@ export class EditorEngine {
       group: '组',
       unknown: '对象',
     }
-    const key = base[type] ?? '对象'
+    const key = t(base[type] ?? '对象')
     this.nameCounters[key] = (this.nameCounters[key] ?? 0) + 1
     return `${key} ${this.nameCounters[key]}`
   }
@@ -721,7 +724,7 @@ export class EditorEngine {
 
   async addImageFromFile(file: File) {
     if (!isAcceptedImageFile(file)) {
-      getStore().toast('仅支持 JPG / PNG / WebP 格式', 'error')
+      getStore().toast(t('仅支持 JPG / PNG / WebP 格式'), 'error')
       return null
     }
     try {
@@ -729,7 +732,7 @@ export class EditorEngine {
       const url = await this.maybeDownscale(raw)
       return await this.addImageFromDataUrl(url, file.name.replace(/\.[^.]+$/, ''))
     } catch {
-      getStore().toast('图片读取失败', 'error')
+      getStore().toast(t('图片读取失败'), 'error')
       return null
     }
   }
@@ -792,14 +795,14 @@ export class EditorEngine {
       if (isFirst) this.fitToScreen()
       return obj
     } catch {
-      getStore().toast('图片加载失败', 'error')
+      getStore().toast(t('图片加载失败'), 'error')
       return null
     }
   }
 
   addText(x?: number, y?: number) {
     const s = getStore().text
-    const text = new fabric.IText('双击编辑文字', {
+    const text = new fabric.IText(t('双击编辑文字'), {
       left: x ?? this.docSize.width / 2,
       top: y ?? this.docSize.height / 2,
       fontFamily: s.fontFamily,
@@ -920,7 +923,7 @@ export class EditorEngine {
         const source = o as AnyObject
         clone.layerId = uid('ly')
         clone.layerType = source.layerType
-        clone.layerName = `${source.layerName ?? '图层'} 副本`
+        clone.layerName = t('{name} 副本', { name: source.layerName ?? t('图层') })
         clone.locked = false
         clone.set({ left: (clone.left ?? 0) + 24, top: (clone.top ?? 0) + 24 })
         clone.setCoords()
@@ -1097,7 +1100,7 @@ export class EditorEngine {
         const obj = o as AnyObject
         return {
           id: obj.layerId ?? '',
-          name: obj.layerName ?? '图层',
+          name: obj.layerName ?? t('图层'),
           type: (obj.layerType ?? 'unknown') as LayerType,
           visible: obj.visible !== false,
           locked: !!obj.locked,
@@ -1630,7 +1633,7 @@ export class EditorEngine {
     this.syncLayers()
     this.syncSelection()
     this.fitToScreen()
-    getStore().toast('已裁剪画布', 'success')
+    getStore().toast(t('已裁剪画布'), 'success')
   }
 
   /* ------------------------------------------------------------------ */
@@ -1743,7 +1746,7 @@ export class EditorEngine {
       if (docChanged) this.fitToScreen()
       this.canvas.requestRenderAll()
     } catch {
-      getStore().toast('状态还原失败', 'error')
+      getStore().toast(t('状态还原失败'), 'error')
     } finally {
       this.suspending = false
       this.setTool(this.tool)

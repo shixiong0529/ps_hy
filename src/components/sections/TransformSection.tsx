@@ -4,6 +4,7 @@ import { Slider } from '../ui/Slider'
 import { IconButton } from '../ui/IconButton'
 import { FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw } from 'lucide-react'
 import { Hint } from '../ui/Hint'
+import { useI18n } from '@/hooks/useI18n'
 
 /**
  * 由目标显示尺寸反推 scale。面板显示的是 getScaledWidth()，它把描边算在内：
@@ -16,6 +17,7 @@ const scaleFor = (target: number, base: number, stroke = 0, uniform = false) => 
 }
 
 export function TransformSection() {
+  const { t } = useI18n()
   const selection = useEditorStore((s) => s.selection)
   const engine = useEditorStore((s) => s.engine)
   if (!selection) return null
@@ -31,7 +33,7 @@ export function TransformSection() {
       </div>
       <div className="flex gap-2 px-3 pb-1">
         <NumberInput
-          label="宽"
+          label={t('宽')}
           value={selection.width}
           min={1}
           onChange={(v) => {
@@ -43,7 +45,7 @@ export function TransformSection() {
           suffix="px"
         />
         <NumberInput
-          label="高"
+          label={t('高')}
           value={selection.height}
           min={1}
           onChange={(v) => {
@@ -55,10 +57,10 @@ export function TransformSection() {
           suffix="px"
         />
       </div>
-      <div className="px-3 pb-1 text-[10px] text-ps-muted">宽高比 {ratio.toFixed(3)}</div>
+      <div className="px-3 pb-1 text-[10px] text-ps-muted">{t('宽高比 {ratio}', { ratio: ratio.toFixed(3) })}</div>
 
       <Slider
-        label="旋转"
+        label={t('旋转')}
         value={selection.angle}
         min={-180}
         max={180}
@@ -68,7 +70,7 @@ export function TransformSection() {
         suffix="°"
       />
       <Slider
-        label="不透明度"
+        label={t('不透明度')}
         value={Math.round(selection.opacity * 100)}
         min={0}
         max={100}
@@ -79,22 +81,22 @@ export function TransformSection() {
       />
 
       <div className="flex items-center gap-1 px-3 py-1.5">
-        <Hint label="逆时针 90°" side="bottom">
+        <Hint label={t('逆时针 90°')} side="bottom">
           <IconButton onClick={() => engine?.rotateActive(-90)}>
             <RotateCcw size={15} />
           </IconButton>
         </Hint>
-        <Hint label="顺时针 90°" side="bottom">
+        <Hint label={t('顺时针 90°')} side="bottom">
           <IconButton onClick={() => engine?.rotateActive(90)}>
             <RotateCw size={15} />
           </IconButton>
         </Hint>
-        <Hint label="水平翻转" side="bottom">
+        <Hint label={t('水平翻转')} side="bottom">
           <IconButton active={selection.flipX} onClick={() => engine?.flipActive('x')}>
             <FlipHorizontal2 size={15} />
           </IconButton>
         </Hint>
-        <Hint label="垂直翻转" side="bottom">
+        <Hint label={t('垂直翻转')} side="bottom">
           <IconButton active={selection.flipY} onClick={() => engine?.flipActive('y')}>
             <FlipVertical2 size={15} />
           </IconButton>

@@ -4,6 +4,7 @@ import { useEditorStore } from '@/store/editorStore'
 import { EXPORT_EXT, downloadDataUrl, formatBytes } from '@/lib/defaults'
 import { Slider } from './ui/Slider'
 import type { ExportFormat } from '@/types'
+import { useI18n } from '@/hooks/useI18n'
 
 const FORMATS: Array<{ id: ExportFormat; label: string }> = [
   { id: 'png', label: 'PNG · 无损' },
@@ -14,6 +15,7 @@ const FORMATS: Array<{ id: ExportFormat; label: string }> = [
 const SCALES = [1, 2, 3]
 
 export function ExportDialog() {
+  const { t } = useI18n()
   const open = useEditorStore((s) => s.exportOpen)
   const setOpen = useEditorStore((s) => s.setExportOpen)
   const opts = useEditorStore((s) => s.exportOptions)
@@ -39,10 +41,10 @@ export function ExportDialog() {
           const res = engine.exportImage(opts)
           const name = `${opts.filename || 'pixelforge-export'}.${EXPORT_EXT[opts.format]}`
           downloadDataUrl(res.dataUrl, name)
-          toast(`已导出 ${name} · ${res.width}×${res.height} · ${formatBytes(res.bytes)}`, 'success')
+          toast(t('已导出 {name} · {width}×{height} · {size}', { name, width: res.width, height: res.height, size: formatBytes(res.bytes) }), 'success')
           setOpen(false)
         } catch {
-          toast('导出失败，请重试', 'error')
+          toast(t('导出失败，请重试'), 'error')
         } finally {
           setBusy(false)
         }
@@ -54,14 +56,14 @@ export function ExportDialog() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-[420px] max-w-[92vw] overflow-hidden rounded-xl border border-ps-border2 bg-ps-panel shadow-pop">
         <div className="flex items-center justify-between border-b border-ps-border px-4 py-2.5">
-          <h3 className="text-[13px] font-medium text-ps-text">导出图片</h3>
+          <h3 className="text-[13px] font-medium text-ps-text">{t('导出图片')}</h3>
           <button className="btn h-6 w-6 p-0" onClick={() => setOpen(false)}>
             <X size={14} />
           </button>
         </div>
 
         <div className="px-4 py-3">
-          <div className="mb-3 text-[11px] text-ps-dim">格式</div>
+          <div className="mb-3 text-[11px] text-ps-dim">{t('格式')}</div>
           <div className="mb-4 grid grid-cols-3 gap-1.5">
             {FORMATS.map((f) => (
               <button
@@ -73,7 +75,7 @@ export function ExportDialog() {
                     : 'border-ps-border bg-ps-panel3 text-ps-dim hover:text-ps-text'
                 }`}
               >
-                {f.label}
+                {t(f.label)}
               </button>
             ))}
           </div>
@@ -86,13 +88,13 @@ export function ExportDialog() {
                 checked={opts.transparent}
                 onChange={(e) => setOpts({ transparent: e.target.checked })}
               />
-              保留透明背景（关闭则用白色填充）
+              {t('保留透明背景（关闭则用白色填充）')}
             </label>
           )}
 
           {opts.format !== 'png' && (
             <Slider
-              label="图片质量"
+              label={t('图片质量')}
               value={Math.round(opts.quality * 100)}
               min={10}
               max={100}
@@ -101,7 +103,7 @@ export function ExportDialog() {
             />
           )}
 
-          <div className="mb-3 mt-2 text-[11px] text-ps-dim">输出倍率</div>
+          <div className="mb-3 mt-2 text-[11px] text-ps-dim">{t('输出倍率')}</div>
           <div className="mb-4 grid grid-cols-3 gap-1.5">
             {SCALES.map((s) => (
               <button
@@ -118,7 +120,7 @@ export function ExportDialog() {
             ))}
           </div>
 
-          <div className="mb-1 text-[11px] text-ps-dim">文件名</div>
+          <div className="mb-1 text-[11px] text-ps-dim">{t('文件名')}</div>
           <div className="flex items-center gap-1 rounded-md border border-ps-border bg-ps-panel3 px-2 py-1">
             <input
               type="text"
@@ -130,19 +132,19 @@ export function ExportDialog() {
           </div>
 
           <div className="mt-3 rounded-md border border-ps-border bg-ps-panel2 px-3 py-2 text-[11px] text-ps-muted">
-            输出尺寸 <span className="font-mono text-ps-text">{outW} × {outH}</span> px
+            {t('输出尺寸')} <span className="font-mono text-ps-text">{outW} × {outH}</span> px
             <br />
-            仅包含画板内的图像内容，不含编辑器界面
+            {t('仅包含画板内的图像内容，不含编辑器界面')}
           </div>
         </div>
 
         <div className="flex items-center gap-2 border-t border-ps-border px-4 py-3">
           <button className="btn btn-ghost flex-1 py-1.5" onClick={() => setOpen(false)}>
-            取消
+            {t('取消')}
           </button>
           <button className="btn btn-primary flex-1 py-1.5" disabled={busy} onClick={doExport}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-            导出图片
+            {t('导出图片')}
           </button>
         </div>
       </div>

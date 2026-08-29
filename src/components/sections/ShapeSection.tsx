@@ -1,10 +1,12 @@
 import { useEditorStore } from '@/store/editorStore'
 import { ColorInput } from '../ui/ColorInput'
 import { Slider } from '../ui/Slider'
+import { useI18n } from '@/hooks/useI18n'
 
 const SHAPE_TYPES = ['rect', 'ellipse', 'triangle', 'line', 'path']
 
 export function ShapeSection() {
+  const { t } = useI18n()
   const selection = useEditorStore((s) => s.selection)
   const engine = useEditorStore((s) => s.engine)
   const shape = useEditorStore((s) => s.shape)
@@ -19,7 +21,7 @@ export function ShapeSection() {
     <div>
       {!isStrokeOnly && (
         <ColorInput
-          label="填充"
+          label={t('填充')}
           value={selection.fill || '#000000'}
           allowTransparent
           onChange={(v) => {
@@ -31,7 +33,7 @@ export function ShapeSection() {
       )}
 
       <ColorInput
-        label={isStrokeOnly ? '线条颜色' : '描边'}
+        label={t(isStrokeOnly ? '线条颜色' : '描边')}
         value={selection.stroke || (isStrokeOnly ? shape.stroke : '#ffffff')}
         onChange={(v) => {
           setShape({ stroke: v })
@@ -41,7 +43,7 @@ export function ShapeSection() {
       />
 
       <Slider
-        label="描边宽度"
+        label={t('描边宽度')}
         value={selection.strokeWidth}
         min={0}
         max={60}
@@ -56,7 +58,7 @@ export function ShapeSection() {
 
       {selection.type === 'rect' && (
         <Slider
-          label="圆角"
+          label={t('圆角')}
           value={selection.rx}
           min={0}
           max={200}

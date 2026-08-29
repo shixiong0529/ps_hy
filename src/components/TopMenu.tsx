@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { Download, Redo2, Undo2 } from 'lucide-react'
+import { Download, Languages, Moon, Redo2, Sun, Undo2 } from 'lucide-react'
 import { useEditorStore } from '@/store/editorStore'
 import { modKey } from '@/lib/defaults'
+import { useI18n } from '@/hooks/useI18n'
 
 interface MenuItem {
   label: string
@@ -86,6 +87,7 @@ function Brand() {
 }
 
 export function TopMenu() {
+  const { language, t } = useI18n()
   const engine = useEditorStore((s) => s.engine)
   const canUndo = useEditorStore((s) => s.canUndo)
   const canRedo = useEditorStore((s) => s.canRedo)
@@ -93,6 +95,9 @@ export function TopMenu() {
   const setExportOpen = useEditorStore((s) => s.setExportOpen)
   const setExportOptions = useEditorStore((s) => s.setExportOptions)
   const setShortcutsOpen = useEditorStore((s) => s.setShortcutsOpen)
+  const theme = useEditorStore((s) => s.theme)
+  const setTheme = useEditorStore((s) => s.setTheme)
+  const setLanguage = useEditorStore((s) => s.setLanguage)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const hasSel = activeIds.length > 0
@@ -104,58 +109,58 @@ export function TopMenu() {
 
   const menus: Array<{ label: string; items: MenuItem[] }> = [
     {
-      label: '文件',
+      label: t('文件'),
       items: [
-        { label: '新建画布', onClick: () => engine?.newDocument() },
-        { label: '打开图片…', shortcut: `${modKey()}+O`, onClick: () => fileRef.current?.click() },
+        { label: t('新建画布'), onClick: () => engine?.newDocument() },
+        { label: t('打开图片…'), shortcut: `${modKey()}+O`, onClick: () => fileRef.current?.click() },
         { divider: true, label: '' },
-        { label: '导出为 PNG', onClick: () => quickExport('png') },
-        { label: '导出为 JPG', onClick: () => quickExport('jpeg') },
+        { label: t('导出为 PNG'), onClick: () => quickExport('png') },
+        { label: t('导出为 JPG'), onClick: () => quickExport('jpeg') },
         { divider: true, label: '' },
-        { label: '导出…', shortcut: `${modKey()}+S`, onClick: () => setExportOpen(true) },
+        { label: t('导出…'), shortcut: `${modKey()}+S`, onClick: () => setExportOpen(true) },
       ],
     },
     {
-      label: '编辑',
+      label: t('编辑'),
       items: [
-        { label: '撤销', shortcut: `${modKey()}+Z`, disabled: !canUndo, onClick: () => engine?.undo() },
-        { label: '重做', shortcut: `${modKey()}+⇧Z`, disabled: !canRedo, onClick: () => engine?.redo() },
+        { label: t('撤销'), shortcut: `${modKey()}+Z`, disabled: !canUndo, onClick: () => engine?.undo() },
+        { label: t('重做'), shortcut: `${modKey()}+⇧Z`, disabled: !canRedo, onClick: () => engine?.redo() },
         { divider: true, label: '' },
-        { label: '复制图层', shortcut: `${modKey()}+J`, disabled: !hasSel, onClick: () => engine?.duplicateActive() },
-        { label: '删除所选', shortcut: 'Del', disabled: !hasSel, onClick: () => engine?.deleteActive() },
+        { label: t('复制图层'), shortcut: `${modKey()}+J`, disabled: !hasSel, onClick: () => engine?.duplicateActive() },
+        { label: t('删除所选'), shortcut: 'Del', disabled: !hasSel, onClick: () => engine?.deleteActive() },
         { divider: true, label: '' },
-        { label: '全选图层', shortcut: `${modKey()}+A`, onClick: () => engine?.selectAll() },
-        { label: '取消选择', shortcut: `${modKey()}+D`, disabled: !hasSel, onClick: () => engine?.deselect() },
+        { label: t('全选图层'), shortcut: `${modKey()}+A`, onClick: () => engine?.selectAll() },
+        { label: t('取消选择'), shortcut: `${modKey()}+D`, disabled: !hasSel, onClick: () => engine?.deselect() },
       ],
     },
     {
-      label: '图像',
+      label: t('图像'),
       items: [
-        { label: '画布左转 90°', onClick: () => engine?.rotateDocument(-90) },
-        { label: '画布右转 90°', onClick: () => engine?.rotateDocument(90) },
+        { label: t('画布左转 90°'), onClick: () => engine?.rotateDocument(-90) },
+        { label: t('画布右转 90°'), onClick: () => engine?.rotateDocument(90) },
         { divider: true, label: '' },
-        { label: '裁剪画布', shortcut: 'C', onClick: () => engine?.setTool('crop') },
+        { label: t('裁剪画布'), shortcut: 'C', onClick: () => engine?.setTool('crop') },
         { divider: true, label: '' },
-        { label: '适应屏幕', shortcut: `${modKey()}+0`, onClick: () => engine?.fitToScreen() },
-        { label: '放大', shortcut: `${modKey()}+=`, onClick: () => engine?.zoomBy(1.2) },
-        { label: '缩小', shortcut: `${modKey()}+-`, onClick: () => engine?.zoomBy(1 / 1.2) },
+        { label: t('适应屏幕'), shortcut: `${modKey()}+0`, onClick: () => engine?.fitToScreen() },
+        { label: t('放大'), shortcut: `${modKey()}+=`, onClick: () => engine?.zoomBy(1.2) },
+        { label: t('缩小'), shortcut: `${modKey()}+-`, onClick: () => engine?.zoomBy(1 / 1.2) },
       ],
     },
     {
-      label: '图层',
+      label: t('图层'),
       items: [
-        { label: '上移一层', disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'up') },
-        { label: '下移一层', disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'down') },
-        { label: '置于顶层', disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'top') },
-        { label: '置于底层', disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'bottom') },
+        { label: t('上移一层'), disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'up') },
+        { label: t('下移一层'), disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'down') },
+        { label: t('置于顶层'), disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'top') },
+        { label: t('置于底层'), disabled: !oneSel, onClick: () => oneSel && engine?.reorderLayer(oneSel, 'bottom') },
         { divider: true, label: '' },
-        { label: '复制图层', disabled: !hasSel, onClick: () => engine?.duplicateActive() },
-        { label: '删除图层', disabled: !oneSel, onClick: () => oneSel && engine?.deleteLayer(oneSel) },
+        { label: t('复制图层'), disabled: !hasSel, onClick: () => engine?.duplicateActive() },
+        { label: t('删除图层'), disabled: !oneSel, onClick: () => oneSel && engine?.deleteLayer(oneSel) },
       ],
     },
     {
-      label: '帮助',
-      items: [{ label: '快捷键一览', shortcut: '?', onClick: () => setShortcutsOpen(true) }],
+      label: t('帮助'),
+      items: [{ label: t('快捷键一览'), shortcut: '?', onClick: () => setShortcutsOpen(true) }],
     },
   ]
 
@@ -168,21 +173,39 @@ export function TopMenu() {
       ))}
 
       <div className="ml-auto flex items-center gap-1">
-        <button className="btn h-7 px-2" disabled={!canUndo} onClick={() => engine?.undo()} title={`撤销 ${modKey()}+Z`}>
+        <button
+          className="btn h-7 min-w-7 px-1.5"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          title={t(theme === 'dark' ? '切换到浅色模式' : '切换到深色模式')}
+          aria-label={t(theme === 'dark' ? '切换到浅色模式' : '切换到深色模式')}
+        >
+          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
+        <button
+          className="btn h-7 gap-1 px-1.5"
+          onClick={() => setLanguage(language === 'zh' ? 'en' : 'zh')}
+          title={t(language === 'zh' ? '切换到英文' : '切换到中文')}
+          aria-label={t(language === 'zh' ? '切换到英文' : '切换到中文')}
+        >
+          <Languages size={14} />
+          <span className="text-[10px] font-semibold">{language === 'zh' ? 'EN' : '中'}</span>
+        </button>
+        <div className="mx-1 h-5 w-px bg-ps-border" />
+        <button className="btn h-7 px-2" disabled={!canUndo} onClick={() => engine?.undo()} title={`${t('撤销')} ${modKey()}+Z`}>
           <Undo2 size={15} />
         </button>
         <button
           className="btn h-7 px-2"
           disabled={!canRedo}
           onClick={() => engine?.redo()}
-          title={`重做 ${modKey()}+Shift+Z`}
+          title={`${t('重做')} ${modKey()}+Shift+Z`}
         >
           <Redo2 size={15} />
         </button>
         <div className="mx-1 h-5 w-px bg-ps-border" />
         <button className="btn btn-primary h-7 px-3" onClick={() => setExportOpen(true)}>
           <Download size={14} />
-          导出
+          {t('导出')}
         </button>
       </div>
 

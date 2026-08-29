@@ -1,6 +1,7 @@
 import { useEditorStore } from '@/store/editorStore'
 import { X } from 'lucide-react'
 import { modKey } from '@/lib/defaults'
+import { useI18n } from '@/hooks/useI18n'
 
 const GROUPS: Array<{ title: string; items: Array<[string, string]> }> = [
   {
@@ -55,6 +56,7 @@ const GROUPS: Array<{ title: string; items: Array<[string, string]> }> = [
 ]
 
 export function ShortcutsDialog() {
+  const { t } = useI18n()
   const open = useEditorStore((s) => s.shortcutsOpen)
   const setOpen = useEditorStore((s) => s.setShortcutsOpen)
   if (!open) return null
@@ -63,7 +65,7 @@ export function ShortcutsDialog() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-[560px] max-w-[92vw] overflow-hidden rounded-xl border border-ps-border2 bg-ps-panel shadow-pop">
         <div className="flex items-center justify-between border-b border-ps-border px-4 py-2.5">
-          <h3 className="text-[13px] font-medium text-ps-text">快捷键</h3>
+          <h3 className="text-[13px] font-medium text-ps-text">{t('快捷键')}</h3>
           <button className="btn h-6 w-6 p-0" onClick={() => setOpen(false)}>
             <X size={14} />
           </button>
@@ -73,13 +75,13 @@ export function ShortcutsDialog() {
             {GROUPS.map((g) => (
               <div key={g.title}>
                 <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ps-accent2">
-                  {g.title}
+                  {t(g.title)}
                 </div>
                 <div className="space-y-1">
                   {g.items.map(([k, v]) => (
                     <div key={k} className="flex items-center justify-between gap-4 text-[11px]">
-                      <span className="text-ps-dim">{k}</span>
-                      <span className="shrink-0 font-mono text-[10px] text-ps-muted">{v}</span>
+                      <span className="text-ps-dim">{t(k)}</span>
+                      <span className="shrink-0 font-mono text-[10px] text-ps-muted">{t(v)}</span>
                     </div>
                   ))}
                 </div>

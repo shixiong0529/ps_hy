@@ -1,4 +1,5 @@
 import { useId, type CSSProperties } from 'react'
+import { useI18n } from '@/hooks/useI18n'
 
 interface SliderProps {
   label: string
@@ -27,6 +28,7 @@ export function Slider({
   disabled,
   suffix,
 }: SliderProps) {
+  const { t } = useI18n()
   const id = useId()
   const pct = ((value - min) / (max - min)) * 100
   const canReset = resetTo !== undefined && value !== resetTo
@@ -36,7 +38,7 @@ export function Slider({
       <div className="mb-1 flex items-center justify-between">
         <label
           htmlFor={id}
-          title={canReset ? '双击重置' : undefined}
+          title={canReset ? t('双击重置') : undefined}
           onDoubleClick={() => {
             if (!canReset) return
             onChange(resetTo)

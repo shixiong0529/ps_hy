@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/hooks/useI18n'
 
 interface Props {
   label: string
@@ -19,6 +20,7 @@ const SWATCHES = [
 ]
 
 export function ColorInput({ label, value, onChange, allowTransparent }: Props) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState(value)
   const safe = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? value : '#ffffff'
   const valid = (v: string) =>
@@ -79,9 +81,9 @@ export function ColorInput({ label, value, onChange, allowTransparent }: Props) 
               setDraft('transparent')
               onChange('transparent')
             }}
-            title="无填充"
+            title={t('无填充')}
           >
-            无
+            {t('无')}
           </button>
         )}
       </div>
