@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { EditorEngine } from '@/lib/engine'
-import { isAcceptedImageFile } from '@/lib/defaults'
+import { CROP_CURSOR, isAcceptedImageFile } from '@/lib/defaults'
 import { ImagePlus, MousePointerClick } from 'lucide-react'
 
 export function EditorCanvas() {
@@ -61,14 +61,16 @@ export function EditorCanvas() {
   const artW = doc.width * view.zoom
   const artH = doc.height * view.zoom
 
+  // 需与 EditorEngine.setTool 中的 canvas 光标保持一致：
+  // Fabric 会给 upper-canvas 元素自己写 style.cursor，画布内以引擎设置的为准。
   const cursor =
     tool === 'hand'
       ? 'grab'
-      : tool === 'text'
-        ? 'text'
-        : tool === 'crop' || ['rect', 'ellipse', 'line', 'triangle'].includes(tool)
-          ? 'crosshair'
-          : tool === 'brush' || tool === 'eraser'
+      : tool === 'crop'
+        ? CROP_CURSOR
+        : tool === 'text'
+          ? 'text'
+          : ['rect', 'ellipse', 'line', 'triangle', 'brush', 'eraser'].includes(tool)
             ? 'crosshair'
             : 'default'
 

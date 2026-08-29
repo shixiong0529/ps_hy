@@ -9,7 +9,7 @@ export function CropSection() {
   return (
     <div className="px-3 py-2">
       <p className="mb-3 text-[11px] leading-relaxed text-ps-dim">
-        拖拽裁剪框的控制点选择保留区域，按住 Shift 可等比缩放。当前画板尺寸 {Math.round(doc.width)} ×{' '}
+        在画布上按住鼠标拖出保留区域，之后可拖拽控制点微调；按住 Shift 可等比框选或缩放。当前画板尺寸 {Math.round(doc.width)} ×{' '}
         {Math.round(doc.height)} px。
       </p>
       <div className="flex gap-2">
@@ -23,7 +23,7 @@ export function CropSection() {
         </button>
       </div>
       <div className="mt-3 rounded-md border border-ps-border bg-ps-panel3 px-2 py-1.5 text-[10px] text-ps-muted">
-        提示：回车键应用裁剪，Esc 取消{view.zoom < 1 ? `（当前视图 ${Math.round(view.zoom * 100)}%）` : ''}
+        提示：框内双击或回车键应用裁剪，Esc 取消{view.zoom < 1 ? `（当前视图 ${Math.round(view.zoom * 100)}%）` : ''}
       </div>
     </div>
   )

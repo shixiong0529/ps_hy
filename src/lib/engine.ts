@@ -2,6 +2,7 @@ import * as fabric from 'fabric'
 import { useEditorStore } from '@/store/editorStore'
 import { applyAdjustments } from './adjustments'
 import {
+  CROP_CURSOR,
   DEFAULT_ADJUSTMENTS,
   DEFAULT_DOC,
   MAX_IMAGE_EDGE,
@@ -38,12 +39,23 @@ const EXTRA_PROPS = [
   'globalCompositeOperation',
 ]
 const HISTORY_LIMIT = 60
+/** 裁剪框内按下后位移超过该屏幕像素数才算"重新框选"，否则视为单击 / 双击 */
+const CROP_DRAG_THRESHOLD = 3
 const MIN_ZOOM = 0.02
 const MAX_ZOOM = 32
 
 const getStore = () => useEditorStore.getState()
 const isInternalEffect = (obj: AnyObject) => !!(obj.isEraserPath || obj.isPaintPath)
 const isLayerObject = (obj: AnyObject) => !obj.isMask && !isInternalEffect(obj)
+
+type Rect = { left: number; top: number; width: number; height: number }
+
+/** 轴对齐矩形是否存在实际重叠面积（容差用于消除浮点误差与贴边情况） */
+const rectsOverlap = (a: Rect, b: Rect, eps = 0.01) =>
+  a.left + a.width > b.left + eps &&
+  b.left + b.width > a.left + eps &&
+  a.top + a.height > b.top + eps &&
+  b.top + b.height > a.top + eps
 
 export class EditorEngine {
   canvas: fabric.Canvas
@@ -82,6 +94,17 @@ export class EditorEngine {
 
   cropRect: fabric.Rect | null = null
   private cropMasks: fabric.Rect[] = []
+  private cropDrawingOrigin: fabric.Point | null = null
+  private cropPendingOrigin: fabric.Point | null = null
+  private cropPendingClient: { x: number; y: number } | null = null
+  private cropBeforeDraw: {
+    left: number
+    top: number
+    width: number
+    height: number
+    scaleX: number
+    scaleY: number
+  } | null = null
 
   private pushTimer: number | null = null
   private nameCounters: Record<string, number> = {}
@@ -259,6 +282,25 @@ export class EditorEngine {
       return
     }
 
+    if (tool === 'crop' && this.cropRect) {
+      // 点击控制点时保留 Fabric 原生缩放。
+      if (opt.transform?.corner) return
+      const rect = this.cropRect
+      // 这里只记录起点：真正拖动（位移超过阈值）后才在 mouse:move 里重新框选。
+      // 按下就把框重置成 1×1 的话，框内单击 / 双击会让裁剪框闪一下。
+      this.cropBeforeDraw = {
+        left: rect.left ?? 0,
+        top: rect.top ?? 0,
+        width: rect.width,
+        height: rect.height,
+        scaleX: rect.scaleX,
+        scaleY: rect.scaleY,
+      }
+      this.cropPendingOrigin = this.clampCropPoint(this.getScenePoint(e))
+      this.cropPendingClient = { x: e.clientX, y: e.clientY }
+      return
+    }
+
     if (tool === 'text') {
       const target = opt.target as AnyObject | undefined
       if (target?.isType?.('i-text', 'text', 'textbox')) {
@@ -282,6 +324,48 @@ export class EditorEngine {
 
   private onMouseMove(opt: fabric.TPointerEventInfo) {
     const e = opt.e as MouseEvent
+
+    // 按下后拖出足够距离，才从"可能是单击"切换成"重新框选"
+    if (this.cropPendingOrigin && this.cropPendingClient && this.cropRect) {
+      const moved = Math.max(
+        Math.abs(e.clientX - this.cropPendingClient.x),
+        Math.abs(e.clientY - this.cropPendingClient.y),
+      )
+      if (moved < CROP_DRAG_THRESHOLD) return
+      // 阈值内 Fabric 可能已经开始拖动裁剪框，这里终止它，几何随后被新框完全覆盖
+      if (opt.transform) this.canvas.endCurrentTransform(e)
+      this.canvas.discardActiveObject(e)
+      this.cropDrawingOrigin = this.cropPendingOrigin
+      this.cropPendingOrigin = null
+      this.cropPendingClient = null
+      this.cropRect.set({ selectable: false, evented: false })
+    }
+
+    if (this.cropDrawingOrigin && this.cropRect) {
+      const p = this.clampCropPoint(this.getScenePoint(e))
+      const origin = this.cropDrawingOrigin
+      let dx = p.x - origin.x
+      let dy = p.y - origin.y
+      if (e.shiftKey) {
+        const maxX = dx >= 0 ? this.docSize.width - origin.x : origin.x
+        const maxY = dy >= 0 ? this.docSize.height - origin.y : origin.y
+        const size = Math.min(Math.max(Math.abs(dx), Math.abs(dy)), maxX, maxY)
+        dx = Math.sign(dx || 1) * size
+        dy = Math.sign(dy || 1) * size
+      }
+      const end = this.clampCropPoint(new fabric.Point(origin.x + dx, origin.y + dy))
+      this.cropRect.set({
+        left: Math.min(origin.x, end.x),
+        top: Math.min(origin.y, end.y),
+        width: Math.max(1, Math.abs(end.x - origin.x)),
+        height: Math.max(1, Math.abs(end.y - origin.y)),
+        scaleX: 1,
+        scaleY: 1,
+      })
+      this.cropRect.setCoords()
+      this.updateCropMask()
+      return
+    }
 
     if (this.panning) {
       const dx = e.clientX - this.panStart.x
@@ -308,9 +392,36 @@ export class EditorEngine {
   }
 
   private onMouseUp() {
+    // 框内只是单击（双击的两次按下也走这里）：保持裁剪框不变
+    if (this.cropPendingOrigin) {
+      this.cropPendingOrigin = null
+      this.cropPendingClient = null
+      this.cropBeforeDraw = null
+      if (this.cropRect) {
+        this.constrainCrop()
+        this.canvas.setActiveObject(this.cropRect)
+        this.updateCropMask()
+      }
+      return
+    }
+
+    if (this.cropDrawingOrigin && this.cropRect) {
+      const rect = this.cropRect
+      const valid = rect.getScaledWidth() >= 8 && rect.getScaledHeight() >= 8
+      if (!valid && this.cropBeforeDraw) rect.set(this.cropBeforeDraw)
+      rect.set({ selectable: true, evented: true })
+      rect.setCoords()
+      this.cropDrawingOrigin = null
+      this.cropBeforeDraw = null
+      this.constrainCrop()
+      this.canvas.setActiveObject(rect)
+      this.updateCropMask()
+      return
+    }
+
     if (this.panning) {
       this.panning = false
-      this.canvas.setCursor(getStore().tool === 'hand' ? 'grab' : 'default')
+      this.canvas.setCursor(this.canvas.defaultCursor)
       return
     }
 
@@ -350,6 +461,23 @@ export class EditorEngine {
   }
 
   private onDblClick(opt: fabric.TPointerEventInfo) {
+    // 裁剪状态下在保留区域内双击 = 应用裁剪（与回车等价）
+    if (getStore().tool === 'crop' && this.cropRect) {
+      const p = this.getScenePoint(opt.e as MouseEvent)
+      const rect = this.cropRect
+      const left = rect.left ?? 0
+      const top = rect.top ?? 0
+      if (
+        p.x >= left &&
+        p.x <= left + rect.getScaledWidth() &&
+        p.y >= top &&
+        p.y <= top + rect.getScaledHeight()
+      ) {
+        this.applyCrop()
+      }
+      return
+    }
+
     const target = opt.target as AnyObject | undefined
     if (target && target.isType && target.isType('i-text', 'text', 'textbox')) {
       this.enterTextEditing(target)
@@ -433,8 +561,18 @@ export class EditorEngine {
     c.selection = tool === 'select'
     c.skipTargetFind = tool === 'hand' || SHAPE_TOOLS.includes(tool)
     c.defaultCursor =
-      tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : SHAPE_TOOLS.includes(tool) ? 'crosshair' : 'default'
+      tool === 'hand'
+        ? 'grab'
+        : tool === 'crop'
+          ? CROP_CURSOR
+          : tool === 'text'
+            ? 'text'
+            : SHAPE_TOOLS.includes(tool)
+              ? 'crosshair'
+              : 'default'
+    // 裁剪时画面上只有裁剪框可交互，hoverCursor 一并跟随，避免移到框内变回箭头
     c.hoverCursor = tool === 'select' ? 'move' : c.defaultCursor
+    if (this.cropRect) this.cropRect.hoverCursor = CROP_CURSOR
 
     if (c.isDrawingMode) {
       c.calcOffset()
@@ -490,7 +628,7 @@ export class EditorEngine {
 
   setSpaceDown(v: boolean) {
     this.spaceDown = v
-    this.canvas.setCursor(v ? 'grab' : getStore().tool === 'hand' ? 'grab' : 'default')
+    this.canvas.setCursor(v ? 'grab' : this.canvas.defaultCursor)
   }
 
   /* ------------------------------------------------------------------ */
@@ -1072,15 +1210,20 @@ export class EditorEngine {
       if (obj.isType?.('image')) {
         const image = obj as unknown as fabric.FabricImage
         const source = image.getElement()
-        const sourceWidth = (source as HTMLImageElement).naturalWidth || source.width || 1
-        const sourceHeight = (source as HTMLImageElement).naturalHeight || source.height || 1
+        const elementWidth = (source as HTMLImageElement).naturalWidth || source.width || 1
+        const elementHeight = (source as HTMLImageElement).naturalHeight || source.height || 1
+        // 裁剪后的图层只保留 cropX / cropY 起始的一块区域，缩略图必须同样只画这块
+        const sx = clamp(image.cropX ?? 0, 0, elementWidth)
+        const sy = clamp(image.cropY ?? 0, 0, elementHeight)
+        const sourceWidth = Math.max(1, Math.min(image.width || elementWidth, elementWidth - sx))
+        const sourceHeight = Math.max(1, Math.min(image.height || elementHeight, elementHeight - sy))
         const scale = Math.min(1, size / Math.max(sourceWidth, sourceHeight))
         const canvas = document.createElement('canvas')
         canvas.width = Math.max(1, Math.round(sourceWidth * scale))
         canvas.height = Math.max(1, Math.round(sourceHeight * scale))
         const context = canvas.getContext('2d')
         if (!context) return null
-        context.drawImage(source, 0, 0, canvas.width, canvas.height)
+        context.drawImage(source, sx, sy, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height)
         return canvas.toDataURL('image/png')
       }
 
@@ -1176,6 +1319,13 @@ export class EditorEngine {
   /* 裁剪                                                                */
   /* ------------------------------------------------------------------ */
 
+  private clampCropPoint(point: fabric.Point) {
+    return new fabric.Point(
+      clamp(point.x, 0, this.docSize.width),
+      clamp(point.y, 0, this.docSize.height),
+    )
+  }
+
   startCrop() {
     if (this.cropRect) return
     const c = this.canvas
@@ -1198,6 +1348,8 @@ export class EditorEngine {
       transparentCorners: false,
       lockRotation: true,
       objectCaching: false,
+      hoverCursor: CROP_CURSOR,
+      moveCursor: CROP_CURSOR,
     })
     rect.setControlsVisibility({ mtr: false })
     const typed = rect as AnyObject
@@ -1220,6 +1372,10 @@ export class EditorEngine {
     }
     this.cropMasks = [mkMask(), mkMask(), mkMask(), mkMask()]
     this.cropRect = rect
+    this.cropDrawingOrigin = null
+    this.cropBeforeDraw = null
+    this.cropPendingOrigin = null
+    this.cropPendingClient = null
 
     c.discardActiveObject()
     this.cropMasks.forEach((m) => c.add(m))
@@ -1274,8 +1430,68 @@ export class EditorEngine {
     this.cropMasks.forEach((m) => c.remove(m))
     this.cropRect = null
     this.cropMasks = []
+    this.cropDrawingOrigin = null
+    this.cropBeforeDraw = null
+    this.cropPendingOrigin = null
+    this.cropPendingClient = null
     c.requestRenderAll()
     if (switchTool) this.setTool('select')
+  }
+
+  /**
+   * 把图片对象自身裁掉裁剪框之外的部分：改写 cropX / cropY / width / height，
+   * 让对象只保留 region 内的源像素。源图引用与滤镜链保持不变，因此调整参数、
+   * 撤销 / 重做和导出都能继续正常工作。
+   *
+   * 旋转过的图片按其局部坐标系的外接矩形裁剪（四角可能多留一点点像素，
+   * 但这些像素本来就在画板之外）。返回 true 表示确实裁掉了内容。
+   */
+  private trimImageToRegion(image: fabric.FabricImage, region: Rect) {
+    const srcWidth = image.width
+    const srcHeight = image.height
+    if (!(srcWidth > 0) || !(srcHeight > 0)) return false
+
+    const matrix = image.calcTransformMatrix()
+    const inverse = fabric.util.invertTransform(matrix)
+    // 裁剪框的四角换算到对象局部坐标系（局部坐标以对象中心为原点、单位为源像素，
+    // 翻转与旋转都已包含在变换矩阵中，因此这里不需要额外处理 flipX / flipY）
+    const corners = [
+      new fabric.Point(region.left, region.top),
+      new fabric.Point(region.left + region.width, region.top),
+      new fabric.Point(region.left + region.width, region.top + region.height),
+      new fabric.Point(region.left, region.top + region.height),
+    ].map((p) => fabric.util.transformPoint(p, inverse))
+
+    const halfW = srcWidth / 2
+    const halfH = srcHeight / 2
+    const xs = corners.map((p) => p.x)
+    const ys = corners.map((p) => p.y)
+    // 换算成"距离当前可见区域左 / 上边缘的偏移"，并夹在 [0, 源尺寸] 之内
+    const left = clamp(Math.round(Math.min(...xs) + halfW), 0, srcWidth)
+    const right = clamp(Math.round(Math.max(...xs) + halfW), 0, srcWidth)
+    const top = clamp(Math.round(Math.min(...ys) + halfH), 0, srcHeight)
+    const bottom = clamp(Math.round(Math.max(...ys) + halfH), 0, srcHeight)
+
+    const width = right - left
+    const height = bottom - top
+    if (width < 1 || height < 1) return false
+    if (width >= srcWidth && height >= srcHeight) return false
+
+    // 先记住保留区域的中心（场景坐标），改完尺寸后把对象放回原位
+    const center = fabric.util.transformPoint(
+      new fabric.Point(left + width / 2 - halfW, top + height / 2 - halfH),
+      matrix,
+    )
+    image.set({
+      cropX: (image.cropX ?? 0) + left,
+      cropY: (image.cropY ?? 0) + top,
+      width,
+      height,
+    })
+    image.setPositionByOrigin(center, 'center', 'center')
+    image.setCoords()
+    image.dirty = true
+    return true
   }
 
   applyCrop() {
@@ -1286,12 +1502,45 @@ export class EditorEngine {
     const y = rect.top ?? 0
     const w = Math.max(8, Math.round(rect.getScaledWidth()))
     const h = Math.max(8, Math.round(rect.getScaledHeight()))
+    const region: Rect = { left: x, top: y, width: w, height: h }
 
+    c.discardActiveObject()
     c.remove(rect)
     this.cropMasks.forEach((m) => c.remove(m))
     this.cropRect = null
     this.cropMasks = []
+    this.cropDrawingOrigin = null
+    this.cropBeforeDraw = null
+    this.cropPendingOrigin = null
+    this.cropPendingClient = null
 
+    // 1) 裁剪是破坏性的：框外的内容真正被丢弃，而不是只靠画板裁切遮住。
+    const dropped: fabric.FabricObject[] = []
+    const droppedLayerIds = new Set<string>()
+    c.getObjects().forEach((o) => {
+      const obj = o as AnyObject
+      if (obj.isMask) return
+      if (!rectsOverlap(obj.getBoundingRect(), region)) {
+        dropped.push(o)
+        if (isLayerObject(obj) && obj.layerId) droppedLayerIds.add(obj.layerId)
+        return
+      }
+      if (obj.isType?.('image')) {
+        this.trimImageToRegion(obj as unknown as fabric.FabricImage, region)
+      }
+    })
+
+    // 目标图层被整体裁掉时，附着其上的画笔 / 橡皮轨迹一并移除
+    if (droppedLayerIds.size) {
+      c.getObjects().forEach((o) => {
+        const obj = o as AnyObject
+        if (!isInternalEffect(obj) || !obj.effectTargetId) return
+        if (droppedLayerIds.has(obj.effectTargetId) && !dropped.includes(o)) dropped.push(o)
+      })
+    }
+    if (dropped.length) c.remove(...dropped)
+
+    // 2) 保留下来的对象整体平移到新画板坐标系
     c.forEachObject((o) => {
       const obj = o as AnyObject
       obj.set({ left: (obj.left ?? 0) - x, top: (obj.top ?? 0) - y })
@@ -1304,6 +1553,8 @@ export class EditorEngine {
     c.requestRenderAll()
     this.pushHistoryState()
     this.setTool('select')
+    this.syncLayers()
+    this.syncSelection()
     this.fitToScreen()
     getStore().toast('已裁剪画布', 'success')
   }
@@ -1383,6 +1634,10 @@ export class EditorEngine {
   private async restore(snap: Snapshot) {
     const vpt = [...this.canvas.viewportTransform] as fabric.TMat2D
     const dims = { width: this.canvas.getWidth(), height: this.canvas.getHeight() }
+    // 画板尺寸变了（裁剪、旋转画布、新建）就得重新适配视图：
+    // 沿用裁剪后的缩放和平移会让还原出来的画面偏出可视区，看起来像"没有撤销"。
+    const docChanged =
+      snap.doc.width !== this.docSize.width || snap.doc.height !== this.docSize.height
     try {
       if (this.pushTimer) {
         window.clearTimeout(this.pushTimer)
@@ -1405,6 +1660,7 @@ export class EditorEngine {
       this.reapplyAllAdjustments()
       this.canvas.setDimensions(dims)
       this.canvas.setViewportTransform(vpt)
+      if (docChanged) this.fitToScreen()
       this.canvas.requestRenderAll()
     } catch {
       getStore().toast('状态还原失败', 'error')

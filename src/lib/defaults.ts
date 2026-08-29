@@ -30,7 +30,7 @@ export const DEFAULT_ADJUSTMENTS: Adjustments = {
 export const TOOLS: ToolDefinition[] = [
   { id: 'select', label: '移动 / 选择', hint: '选择、移动、缩放、旋转对象', shortcut: 'V', drawKind: null },
   { id: 'hand', label: '抓手', hint: '拖动画布视图（空格键可临时切换）', shortcut: 'H', drawKind: null },
-  { id: 'crop', label: '裁剪', hint: '拖拽裁剪框后按回车或点击应用', shortcut: 'C', drawKind: null },
+  { id: 'crop', label: '裁剪', hint: '拖拽裁剪框后在框内双击、按回车或点击应用', shortcut: 'C', drawKind: null },
   { id: 'brush', label: '画笔', hint: '自由绘制笔迹', shortcut: 'B', drawKind: null },
   { id: 'eraser', label: '橡皮擦', hint: '擦除画笔与图形内容', shortcut: 'E', drawKind: null },
   { id: 'text', label: '文字', hint: '点击画布添加文字图层', shortcut: 'T', drawKind: null },
@@ -39,6 +39,23 @@ export const TOOLS: ToolDefinition[] = [
   { id: 'line', label: '直线', hint: '拖拽绘制直线', shortcut: 'L', drawKind: 'line' },
   { id: 'triangle', label: '三角形', hint: '拖拽绘制三角形', shortcut: 'Y', drawKind: 'triangle' },
 ]
+
+/**
+ * 裁剪光标：用 lucide 的 Crop 图标画成 SVG 光标，外层深色描边保证在亮色图片上也看得清。
+ * Safari 不支持 SVG 光标，会自动退回 crosshair。
+ */
+const CROP_CURSOR_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"' +
+  ' stroke-linecap="round" stroke-linejoin="round">' +
+  '<g stroke="#0b0d11" stroke-opacity="0.65" stroke-width="4.5">' +
+  '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></g>' +
+  '<g stroke="#ffffff" stroke-width="2">' +
+  '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></g>' +
+  '</svg>'
+
+export const CROP_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent(
+  CROP_CURSOR_SVG,
+)}") 12 12, crosshair`
 
 export const SHAPE_TOOLS: ToolId[] = ['rect', 'ellipse', 'line', 'triangle']
 
