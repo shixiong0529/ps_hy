@@ -49,6 +49,22 @@ export class EditorEngine {
   canvas: fabric.Canvas
   docSize = { width: DEFAULT_DOC.width, height: DEFAULT_DOC.height }
 
+  /** 仅显示画板范围内的内容；对象仍保留完整数据，撤销和再次移动不会丢失。 */
+  private readonly artboardClip = new fabric.Rect({
+    left: 0,
+    top: 0,
+    width: DEFAULT_DOC.width,
+    height: DEFAULT_DOC.height,
+    originX: 'left',
+    originY: 'top',
+    fill: '#000000',
+    absolutePositioned: true,
+    selectable: false,
+    evented: false,
+    excludeFromExport: true,
+    objectCaching: false,
+  })
+
   private history: Snapshot[] = []
   private future: Snapshot[] = []
   private currentSnapshot: Snapshot
@@ -87,6 +103,7 @@ export class EditorEngine {
       selectionBorderColor: '#3d7eff',
       selectionLineWidth: 1,
     })
+    this.canvas.clipPath = this.artboardClip
 
     this.applyControlStyle()
     this.bindEvents()
@@ -94,6 +111,19 @@ export class EditorEngine {
     window.addEventListener('scroll', this.refreshCanvasOffset, true)
     this.currentSnapshot = this.serialize()
     getStore().setHistory(false, false)
+  }
+
+  private updateArtboardClip() {
+    this.artboardClip.set({
+      left: 0,
+      top: 0,
+      width: this.docSize.width,
+      height: this.docSize.height,
+      scaleX: 1,
+      scaleY: 1,
+    })
+    this.artboardClip.setCoords()
+    this.artboardClip.dirty = true
   }
 
   /* ------------------------------------------------------------------ */
@@ -538,6 +568,7 @@ export class EditorEngine {
           width: Math.round(img.width || DEFAULT_DOC.width),
           height: Math.round(img.height || DEFAULT_DOC.height),
         }
+        this.updateArtboardClip()
         getStore().setDoc({ ...this.docSize })
       } else {
         const maxEdge = Math.min(this.docSize.width, this.docSize.height) * 0.6
@@ -784,6 +815,7 @@ export class EditorEngine {
       obj.setCoords()
     })
     this.docSize = nextDoc
+    this.updateArtboardClip()
     getStore().setDoc({ ...this.docSize })
     c.requestRenderAll()
     this.pushHistoryState()
@@ -1267,6 +1299,7 @@ export class EditorEngine {
     })
 
     this.docSize = { width: w, height: h }
+    this.updateArtboardClip()
     getStore().setDoc({ ...this.docSize })
     c.requestRenderAll()
     this.pushHistoryState()
@@ -1358,6 +1391,7 @@ export class EditorEngine {
       this.suspending = true
       this.cancelCrop(false)
       this.docSize = { ...snap.doc }
+      this.updateArtboardClip()
       getStore().setDoc({ ...this.docSize })
       useEditorStore.setState({
         adjustments: Object.fromEntries(
@@ -1366,6 +1400,7 @@ export class EditorEngine {
         adjustTargetId: null,
       })
       await this.canvas.loadFromJSON(snap.json)
+      this.canvas.clipPath = this.artboardClip
       this.ensureIds()
       this.reapplyAllAdjustments()
       this.canvas.setDimensions(dims)
@@ -1426,6 +1461,7 @@ export class EditorEngine {
     this.cancelCrop(false)
     this.canvas.remove(...this.canvas.getObjects())
     this.docSize = { width, height }
+    this.updateArtboardClip()
     getStore().setDoc({ ...this.docSize })
     useEditorStore.setState({ adjustments: {}, adjustTargetId: null })
     this.nameCounters = {}
