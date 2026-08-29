@@ -94,7 +94,7 @@ export function EditorCanvas() {
 
       {isEmpty && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="pointer-events-auto flex w-[420px] max-w-[86%] flex-col items-center rounded-2xl border border-dashed border-ps-border2 bg-ps-panel/70 px-10 py-10 text-center backdrop-blur-sm">
+          <div className="flex w-[420px] max-w-[86%] flex-col items-center rounded-2xl border border-dashed border-ps-border2 bg-ps-panel/70 px-10 py-10 text-center backdrop-blur-sm">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-ps-accentSoft text-ps-accent2">
               <ImagePlus size={26} />
             </div>
@@ -102,7 +102,7 @@ export function EditorCanvas() {
             <p className="mb-5 text-xs leading-relaxed text-ps-muted">
               支持 JPG / PNG / WebP，也可以直接 Ctrl/⌘ + V 粘贴剪贴板图片
             </p>
-            <label className="btn btn-primary cursor-pointer px-4 py-1.5">
+            <label className="btn btn-primary pointer-events-auto cursor-pointer px-4 py-1.5">
               <MousePointerClick size={14} />
               选择图片
               <input

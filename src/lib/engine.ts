@@ -50,6 +50,18 @@ const isLayerObject = (obj: AnyObject) => !obj.isMask && !isInternalEffect(obj)
 
 type Rect = { left: number; top: number; width: number; height: number }
 
+/**
+ * 把角度收进属性面板旋转滑块的量程 [-180, 180]。
+ * 已经在量程内的值原样返回——±180 是同一个角度，若强行归一到某一端，
+ * 用户把滑块拖到另一端时会被立刻弹回去。
+ */
+const normalizeAngle = (deg: number) => {
+  const r = Math.round(deg)
+  if (r >= -180 && r <= 180) return r
+  const a = ((r % 360) + 360) % 360
+  return a > 180 ? a - 360 : a
+}
+
 /** 轴对齐矩形是否存在实际重叠面积（容差用于消除浮点误差与贴边情况） */
 const rectsOverlap = (a: Rect, b: Rect, eps = 0.01) =>
   a.left + a.width > b.left + eps &&
@@ -120,6 +132,8 @@ export class EditorEngine {
       selection: true,
       backgroundColor: '',
       fireRightClick: true,
+      // 不开这个，onMouseDown 里的 e.button === 1 永远不会成立，中键平移是死代码
+      fireMiddleClick: true,
       stopContextMenu: true,
       uniformScaling: true,
       selectionColor: 'rgba(61,126,255,0.14)',
@@ -225,6 +239,9 @@ export class EditorEngine {
       const path = (opt.path ?? null) as AnyObject | null
       if (!path) return
       const erasing = this.tool === 'eraser'
+      // 目标图层可能在切换工具之后被删除 / 隐藏 / 锁定，这里实时复核并在需要时改选，
+      // 否则会留下 effectTargetId 失效、图层面板看不到也删不掉的孤儿轨迹
+      this.drawingTargetId = this.resolveDrawingTarget()
       const paintingIntoLayer = this.tool === 'brush' && !!this.drawingTargetId
       if (erasing || paintingIntoLayer) {
         path.isEraserPath = erasing
@@ -249,6 +266,14 @@ export class EditorEngine {
       const path = (opt.path ?? null) as AnyObject | null
       if (!path) return
       if (isInternalEffect(path)) {
+        if (!path.effectTargetId) {
+          // 没有可作用的图层（画布为空 / 图层全部隐藏或锁定）：丢弃这条轨迹，
+          // 留下来只会变成谁都管不到、导出却又会出现的孤儿
+          this.canvas.remove(path as fabric.FabricObject)
+          this.canvas.requestRenderAll()
+          getStore().toast('没有可编辑的图层，请先显示或解锁目标图层', 'error')
+          return
+        }
         this.placeEffectAfterTarget(path)
         this.canvas.requestRenderAll()
         return
@@ -276,11 +301,17 @@ export class EditorEngine {
     const tool = getStore().tool
 
     if (e.button === 1 || this.spaceDown || tool === 'hand') {
+      // 中键在部分浏览器上默认进入自动滚动模式，会顶掉平移
+      if (e.button === 1) e.preventDefault()
       this.panning = true
       this.panStart = { x: e.clientX, y: e.clientY }
       this.canvas.setCursor('grabbing')
       return
     }
+
+    // 平移之外，右键不参与任何工具操作：否则图形 / 文字工具下右键会凭空生成图层，
+    // 而 stopContextMenu 又把右键菜单吞掉了，用户只会看到莫名多出的对象
+    if (e.button === 2) return
 
     if (tool === 'crop' && this.cropRect) {
       // 点击控制点时保留 Fabric 原生缩放。
@@ -392,6 +423,11 @@ export class EditorEngine {
   }
 
   private onMouseUp() {
+    // 任何一次松手都结束平移。裁剪分支会提前 return，
+    // 若把重置留在后面，中键松手就会让 panning 卡在 true。
+    const wasPanning = this.panning
+    this.panning = false
+
     // 框内只是单击（双击的两次按下也走这里）：保持裁剪框不变
     if (this.cropPendingOrigin) {
       this.cropPendingOrigin = null
@@ -419,8 +455,7 @@ export class EditorEngine {
       return
     }
 
-    if (this.panning) {
-      this.panning = false
+    if (wasPanning) {
       this.canvas.setCursor(this.canvas.defaultCursor)
       return
     }
@@ -541,15 +576,8 @@ export class EditorEngine {
     const c = this.canvas
     this.panning = false
     if (tool === 'brush' || tool === 'eraser') {
-      const active = c
-        .getActiveObjects()
-        .map((obj) => obj as AnyObject)
-        .find((obj) => isLayerObject(obj) && obj.visible !== false && !obj.locked)
-      const fallback = [...c.getObjects()]
-        .reverse()
-        .map((obj) => obj as AnyObject)
-        .find((obj) => isLayerObject(obj) && obj.visible !== false && !obj.locked)
-      this.drawingTargetId = (active ?? fallback)?.layerId ?? null
+      // 切换到画笔的这一刻按当前选中重新挑目标；之后每一笔再由 resolveDrawingTarget 复核
+      this.drawingTargetId = this.resolveDrawingTarget(true)
     } else {
       this.drawingTargetId = null
     }
@@ -607,6 +635,29 @@ export class EditorEngine {
     if (inCrop) this.startCrop()
   }
 
+  /**
+   * 画笔 / 橡皮这一笔落在哪个图层上。
+   * preferActive=true（刚切到画笔时）优先当前选中；否则优先沿用已有目标，
+   * 只有目标失效（被删除 / 隐藏 / 锁定）才重新挑一个，保证连续多笔落在同一层。
+   */
+  private resolveDrawingTarget(preferActive = false) {
+    const c = this.canvas
+    const usable = (obj: AnyObject) => isLayerObject(obj) && obj.visible !== false && !obj.locked
+    if (!preferActive) {
+      const current = this.drawingTargetId ? this.findById(this.drawingTargetId) : undefined
+      if (current && usable(current)) return this.drawingTargetId
+    }
+    const active = c
+      .getActiveObjects()
+      .map((obj) => obj as AnyObject)
+      .find(usable)
+    const fallback = [...c.getObjects()]
+      .reverse()
+      .map((obj) => obj as AnyObject)
+      .find(usable)
+    return (active ?? fallback)?.layerId ?? null
+  }
+
   refreshBrush() {
     const b = getStore().brush
     const brush = this.canvas.freeDrawingBrush as unknown as fabric.PencilBrush | undefined
@@ -618,8 +669,16 @@ export class EditorEngine {
 
   private brushColor(tool: ToolId, color: string, opacity: number) {
     if (tool === 'eraser') return 'rgba(0,0,0,1)'
-    const hex = color.match(/^#([0-9a-f]{6})$/i)?.[1]
-    if (!hex || opacity >= 100) return color
+    // 取色框允许三位写法（#fff），这里要一并展开，否则不透明度会被静默忽略
+    const raw = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1]
+    if (!raw || opacity >= 100) return color
+    const hex =
+      raw.length === 3
+        ? raw
+            .split('')
+            .map((ch) => ch + ch)
+            .join('')
+        : raw
     const r = Number.parseInt(hex.slice(0, 2), 16)
     const g = Number.parseInt(hex.slice(2, 4), 16)
     const b = Number.parseInt(hex.slice(4, 6), 16)
@@ -974,8 +1033,16 @@ export class EditorEngine {
     if (commit) this.pushHistoryState()
   }
 
+  /**
+   * 供取色盘这类没有明确"松手"时机的连续输入使用：
+   * 配合 updateActive(props, false)，停手 350ms 后只落一条历史。
+   */
+  scheduleHistory() {
+    this.schedulePush()
+  }
+
   /** 将工具栏前景色应用到当前对象；对象类型以 Canvas 实态为准，避免 UI 选区快照过期。 */
-  setActiveForegroundColor(color: string) {
+  setActiveForegroundColor(color: string, commit = true) {
     let changed = false
     this.canvas
       .getActiveObjects()
@@ -999,7 +1066,9 @@ export class EditorEngine {
     this.canvas.requestRenderAll()
     this.syncSelection()
     this.syncLayers()
-    this.pushHistoryState()
+    // 取色盘拖动时会连续触发，必须走防抖，否则几十个中间色会把 60 条历史挤空
+    if (commit) this.pushHistoryState()
+    else this.schedulePush()
   }
 
   nudgeActive(dx: number, dy: number) {
@@ -1065,15 +1134,17 @@ export class EditorEngine {
     this.canvas.moveObjectTo(effect as fabric.FabricObject, insertAt)
   }
 
+  /** @returns 是否真的选中了（隐藏或锁定的图层不可选，调用方据此给出提示） */
   selectLayer(id: string) {
     const obj = this.findById(id)
-    if (!obj) return
-    if (obj.visible === false || obj.locked) return
+    if (!obj) return false
+    if (obj.visible === false || obj.locked) return false
     this.setTool('select')
     if (this.canvas.getActiveObjects().length > 1) this.canvas.discardActiveObject()
     this.canvas.setActiveObject(obj as fabric.FabricObject)
     this.canvas.requestRenderAll()
     this.syncSelection()
+    return true
   }
 
   setLayerVisible(id: string, visible: boolean) {
@@ -1109,7 +1180,8 @@ export class EditorEngine {
 
   setLayerOpacity(id: string, opacity: number, commit = true) {
     const obj = this.findById(id)
-    if (!obj) return
+    // 与 updateActive / nudgeActive 保持一致：锁定的图层不接受属性修改
+    if (!obj || obj.locked) return
     obj.set({ opacity })
     this.canvas.requestRenderAll()
     this.syncSelection()
@@ -1248,7 +1320,9 @@ export class EditorEngine {
 
     if (objs.length !== 1) {
       store.setSelection(null)
-      if (objs.length === 0) store.setAdjustTarget(null)
+      // 多选时也要清：否则"图像调整"面板仍指向上一个图片图层，
+      // 拖滑块会改到并不在当前选区里的图层
+      store.setAdjustTarget(null)
       this.syncLayers()
       return
     }
@@ -1264,7 +1338,7 @@ export class EditorEngine {
       top: Math.round(obj.top ?? 0),
       width: Math.round(obj.getScaledWidth()),
       height: Math.round(obj.getScaledHeight()),
-      angle: Math.round(obj.angle ?? 0),
+      angle: normalizeAngle(obj.angle ?? 0),
       opacity: obj.opacity ?? 1,
       flipX: !!obj.flipX,
       flipY: !!obj.flipY,
@@ -1612,7 +1686,11 @@ export class EditorEngine {
   }
 
   undo() {
-    if (!this.history.length || this.restoring) return
+    if (this.restoring) return
+    // 防抖窗口内（画笔、方向键微调、文字输入）还有未入栈的改动，先落成一条历史，
+    // 否则这一步会被直接丢掉，一次撤销回退两个操作
+    if (this.pushTimer) this.pushHistoryState()
+    if (!this.history.length) return
     this.restoring = true
     const snap = this.history.pop()!
     this.future.push(this.currentSnapshot)
@@ -1622,7 +1700,9 @@ export class EditorEngine {
   }
 
   redo() {
-    if (!this.future.length || this.restoring) return
+    if (this.restoring) return
+    if (this.pushTimer) this.pushHistoryState()
+    if (!this.future.length) return
     this.restoring = true
     const snap = this.future.pop()!
     this.history.push(this.currentSnapshot)
@@ -1759,6 +1839,8 @@ export class EditorEngine {
         quality: opts.format === 'png' ? 1 : opts.quality,
         multiplier: scale,
         enableRetinaScaling: false,
+        // 裁剪状态下直接导出时，虚线框和四块暗色遮罩不能被烘焙进成图
+        filter: (obj) => !(obj as AnyObject).isMask,
       })
     } finally {
       c.backgroundColor = prevBg

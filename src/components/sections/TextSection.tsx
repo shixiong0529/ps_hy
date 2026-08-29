@@ -92,7 +92,8 @@ export function TextSection() {
         value={typeof selection.fill === 'string' ? selection.fill : textStyle.fill}
         onChange={(v) => {
           setTextStyle({ fill: v })
-          set({ fill: v })
+          set({ fill: v }, false)
+          engine?.scheduleHistory()
         }}
       />
 

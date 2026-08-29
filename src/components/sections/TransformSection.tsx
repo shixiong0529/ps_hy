@@ -5,6 +5,16 @@ import { IconButton } from '../ui/IconButton'
 import { FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw } from 'lucide-react'
 import { Hint } from '../ui/Hint'
 
+/**
+ * 由目标显示尺寸反推 scale。面板显示的是 getScaledWidth()，它把描边算在内：
+ * strokeUniform 时描边不随缩放变化（width * scale + stroke），否则一起缩放（(width + stroke) * scale）。
+ */
+const scaleFor = (target: number, base: number, stroke = 0, uniform = false) => {
+  const b = base || 1
+  const next = uniform ? (target - stroke) / b : target / (b + stroke)
+  return Number.isFinite(next) && next > 0 ? next : 0.01
+}
+
 export function TransformSection() {
   const selection = useEditorStore((s) => s.selection)
   const engine = useEditorStore((s) => s.engine)
@@ -27,7 +37,7 @@ export function TransformSection() {
           onChange={(v) => {
             const o = engine?.canvas.getActiveObject()
             if (!o) return
-            set({ scaleX: v / (o.width || 1) }, false)
+            set({ scaleX: scaleFor(v, o.width, o.strokeWidth, o.strokeUniform) }, false)
           }}
           onCommit={() => engine?.pushHistoryState()}
           suffix="px"
@@ -39,7 +49,7 @@ export function TransformSection() {
           onChange={(v) => {
             const o = engine?.canvas.getActiveObject()
             if (!o) return
-            set({ scaleY: v / (o.height || 1) }, false)
+            set({ scaleY: scaleFor(v, o.height, o.strokeWidth, o.strokeUniform) }, false)
           }}
           onCommit={() => engine?.pushHistoryState()}
           suffix="px"

@@ -38,6 +38,7 @@ export function LayersPanel() {
   const layers = useEditorStore((s) => s.layers)
   const engine = useEditorStore((s) => s.engine)
   const revision = useEditorStore((s) => s.layerRevision)
+  const toast = useEditorStore((s) => s.toast)
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -193,7 +194,8 @@ export function LayersPanel() {
                   <span className="text-[9px] uppercase tracking-wide text-ps-muted">{LAYER_LABEL[l.type]}</span>
                   <input
                     type="range"
-                    className="ps-range h-2 flex-1"
+                    className={`ps-range h-2 flex-1 ${l.locked ? 'pointer-events-none opacity-40' : ''}`}
+                    disabled={l.locked}
                     min={0}
                     max={100}
                     value={Math.round(l.opacity * 100)}
@@ -214,7 +216,9 @@ export function LayersPanel() {
                     className="btn h-5 w-5 p-0"
                     onClick={(e) => {
                       e.stopPropagation()
-                      engine?.editText(l.id)
+                      if (!engine?.editText(l.id)) {
+                        toast(l.locked ? '图层已锁定，请先解锁' : '图层已隐藏，请先显示', 'error')
+                      }
                     }}
                     title="编辑文字"
                   >
@@ -225,8 +229,8 @@ export function LayersPanel() {
                   className="btn h-5 w-5 p-0"
                   onClick={(e) => {
                     e.stopPropagation()
-                    engine?.selectLayer(l.id)
-                    engine?.duplicateActive()
+                    if (engine?.selectLayer(l.id)) engine.duplicateActive()
+                    else toast(l.locked ? '图层已锁定，请先解锁' : '图层已隐藏，请先显示', 'error')
                   }}
                   title="复制图层"
                 >

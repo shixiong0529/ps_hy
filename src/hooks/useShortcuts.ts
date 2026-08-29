@@ -43,6 +43,9 @@ export function useShortcuts() {
         }
         if (store.exportOpen) return store.setExportOpen(false)
         if (store.shortcutsOpen) return store.setShortcutsOpen(false)
+        // 在输入框或文字编辑态里，Esc 只用于撤销这次输入，
+        // 不应该顺带取消画布选区（那会让整个属性面板消失）
+        if (isTypingTarget(e.target) || isEditingText()) return
         if (store.tool === 'crop') return engine?.setTool('select')
         return engine?.deselect()
       }

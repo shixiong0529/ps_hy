@@ -24,7 +24,8 @@ export function ShapeSection() {
           allowTransparent
           onChange={(v) => {
             setShape({ fill: v })
-            set({ fill: v })
+            set({ fill: v }, false)
+            engine?.scheduleHistory()
           }}
         />
       )}
@@ -34,7 +35,8 @@ export function ShapeSection() {
         value={selection.stroke || (isStrokeOnly ? shape.stroke : '#ffffff')}
         onChange={(v) => {
           setShape({ stroke: v })
-          set({ stroke: v })
+          set({ stroke: v }, false)
+          engine?.scheduleHistory()
         }}
       />
 

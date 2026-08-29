@@ -16,7 +16,7 @@ const POS: Record<NonNullable<Props['side']>, string> = {
 
 export function Hint({ label, shortcut, side = 'right', disabled, children }: Props) {
   return (
-    <div className="relative flex">
+    <div className="group relative flex">
       {children}
       {!disabled && (
         <div

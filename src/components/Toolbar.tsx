@@ -81,7 +81,7 @@ export function Toolbar() {
               setBrush({ color })
               setTextStyle({ fill: color })
               setShapeStyle({ fill: color })
-              engine?.setActiveForegroundColor(color)
+              engine?.setActiveForegroundColor(color, false)
               engine?.refreshBrush()
             }}
           />
